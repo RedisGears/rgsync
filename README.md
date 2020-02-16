@@ -20,9 +20,8 @@ RGWriteBehind(GB, keysPrefix='person2', mappings=personMappings, backend=mySqlPe
 mySqlCarBackend = MySqlBackend('demouser', 'Password123!', 'localhost:3306/test', 'car', 'id')
 
 carMappings = {
-	'first_name':'first',
-	'last_name':'last',
-	'age':'age'
+	'id':'id',
+	'color':'color'
 }
 
 RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, backend=mySqlCarBackend, name='CarsWriteBehind', version='99.99.99')
