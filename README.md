@@ -20,5 +20,5 @@ RGWriteBehind(GB, keysPrefix='person2', mappings=mappings, backend=mySqlBackend,
 # Run
 Use [this](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) script to send the Gears to RedisGears:
 ```bash
-python gears.py --host <host> --port <post> --password <password> ~/work/WriteBehind/example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
+python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
 ```
