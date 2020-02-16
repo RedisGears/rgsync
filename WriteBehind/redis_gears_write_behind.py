@@ -257,7 +257,7 @@ class RGWriteBehind():
 
         ## create the execution to write each key from stream to DB
         descJson = {
-            'name':'%s.KeysReader' % name,
+            'name':'%s.StreamReader' % name,
             'version':version,
             'desc':'read from stream and write to DB table %s' % self.backend.TableName(),
         }
