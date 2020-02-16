@@ -27,7 +27,7 @@ carMappings = {
 RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, backend=mySqlCarBackend, name='CarsWriteBehind', version='99.99.99')
 ```
 # Run
-Use [this](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) script to send the Gears to RedisGears:
+Use [this](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) script to send the Gear to RedisGears:
 ```bash
 python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
 ```
