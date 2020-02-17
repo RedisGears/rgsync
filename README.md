@@ -86,7 +86,7 @@ Sometimes you want to get an acknowledge that your data was successfully written
             2) "done"
 ```
 
-# Recommendation
+# Recommendations
 To avoid events lost, that will follow with inconsistencies between Redis and the backend, it is highly recommended to use replication. When the primary crash and the secondary is promoted, the secondary will continue from where the primary stopped.
 
 It is also possible to use AOF to make sure we do not lose events.
