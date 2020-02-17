@@ -1,5 +1,7 @@
 # WriteBehind
 Write Behind Recipe for RedisGears
+# Demo
+![WriteBehind demo](demo/WriteBehindDemo.gif)
 
 # Example
 Running this example will write all hash with prefix `person2:<id>` to mysql database table `person1` and all hash with prefix `car:<id>` to mysql database table `car`
