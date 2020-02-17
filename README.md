@@ -50,7 +50,7 @@ python gears.py --host <host> --port <post> --password <password> example.py REQ
 ```
 # How Does it Work?
 * Key is written to the database and trigger the first Gear registration
-* The Gears registration writes the data to Redis stream which trigger the second Gear registration
+* The Gear registration writes the data to Redis stream which trigger the second Gear registration
 * The second Gear registration read the data from the Redis stream and write it to the connector
 
 ## Why Redis Stream is Required?
