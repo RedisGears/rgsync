@@ -91,5 +91,5 @@ To avoid events lost, that will follow with inconsistencies between Redis and th
 
 It is also possible to use AOF to make sure we do not lose events.
 
-#Monitor
+# Monitor
 Use [this](https://github.com/RedisGears/RedisGearsMonitor) to monitor the created registrations
