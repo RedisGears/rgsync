@@ -16,31 +16,16 @@ def CompareIds(id1, id2):
 
     return 0
 
-class BaseSqlBackend():
-    def __init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName=None):
+class BaseSqlConnection():
+    def __init__(self, user, passwd, db):
         self.user = user
         self.passwd = passwd
         self.db = db
-        self.tableName = tableName
-        self.pk = pk
-        self.exactlyOnceTableName = exactlyOnceTableName
-        self.exactlyOnceLastId = None
-        self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
-        self.conn = None
-
-    def PrepereQueries(self, mappings):
-        raise Exception('Can not use BaseSqlBackend PrepereQueries directly')
-
-    def TableName(self):
-        return self.tableName
-
-    def PrimaryKey(self):
-        return self.pk
 
     def _getConnectionStr(self):
-        raise Exception('Can not use BaseSqlBackend _getConnectionStr directly')
+        raise Exception('Can not use BaseSqlConnector _getConnectionStr directly')
 
-    def _connect(self):
+    def Connect(self):
         from sqlalchemy import create_engine
         ConnectionStr = self._getConnectionStr()
 
@@ -49,6 +34,51 @@ class BaseSqlBackend():
         conn = engine.connect()
         WriteBehindLog('Connect: Connected')
         return conn
+
+class MySqlConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+
+    def _getConnectionStr(self):
+        return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
+
+class OracleSqlConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+
+    def _getConnectionStr(self):
+        return 'oracle://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
+
+class SnowflakeSqlConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db, account):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+        self.account = account
+
+    def _getConnectionStr(self):
+        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.username,
+                                                                     password=self.password,
+                                                                     account=self.account,
+                                                                     db=self.db)
+
+
+class BaseSqlConnector():
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        self.connection = connection
+        self.tableName = tableName
+        self.pk = pk
+        self.exactlyOnceTableName = exactlyOnceTableName
+        self.exactlyOnceLastId = None
+        self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
+        self.conn = None
+
+    def PrepereQueries(self, mappings):
+        raise Exception('Can not use BaseSqlConnector PrepereQueries directly')
+
+    def TableName(self):
+        return self.tableName
+
+    def PrimaryKey(self):
+        return self.pk
 
     def WriteData(self, data):
         if len(data) == 0:
@@ -60,10 +90,10 @@ class BaseSqlBackend():
             if not self.conn:
                 from sqlalchemy.sql import text
                 self.sqlText = text
-                self.conn = self._connect()
+                self.conn = self.connection.Connect()
                 if self.exactlyOnceTableName is not None:
                     shardId = 'shard-%s' % hashtag()
-                    result = conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName, {'id':shardId}))
+                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName, {'id':shardId}))
                     res = result.first()
                     if res is not None:
                         self.exactlyOnceLastId = str(res['val'])
@@ -123,9 +153,9 @@ class BaseSqlBackend():
             WriteBehindLog(msg)
             raise Exception(msg) from None
 
-class MySqlBackend(BaseSqlBackend):
-    def __init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName=None):
-        BaseSqlBackend.__init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName)
+class MySqlConnector(BaseSqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 
     def PrepereQueries(self, mappings):
         def GetUpdateQuery(tableName, mappings, pk):
@@ -140,12 +170,9 @@ class MySqlBackend(BaseSqlBackend):
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
-    def _getConnectionStr(self):
-        return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
-
-class OracleSqlBackend(BaseSqlBackend):
-    def __init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName=None):
-        BaseSqlBackend.__init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName)
+class OracleSqlConnector(BaseSqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 
     def PrepereQueries(self, mappings):
         values = [val for kk, val in mappings.items() if not kk.startswith('_')]
@@ -161,16 +188,6 @@ class OracleSqlBackend(BaseSqlBackend):
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
 
-    def _getConnectionStr(self):
-        return 'oracle://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
-
-class SnowflakeSqlBackend(OracleSqlBackend):
-    def __init__(self, user, passwd, db, tableName, pk, account, exactlyOnceTableName=None):
-        OracleSqlBackend.__init__(self, user, passwd, db, tableName, pk, exactlyOnceTableName)
-        self.account = account
-
-    def _getConnectionStr(self):
-        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.username,
-                                                                     password=self.password,
-                                                                     account=self.account,
-                                                                     db=self.db)
+class SnowflakeSqlConnector(OracleSqlConnector):
+    def __init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName=None):
+        OracleSqlBackend.__init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName)

@@ -3,7 +3,7 @@ from redisgears import executeCommand as execute
 SIMPLE_HASH_BACKEND_PK = 'SimpleHashBackendPK'
 SIMPLE_HASH_BACKEND_TABLE = 'SimpleHashBackendTable'
 
-class SimpleHashBackend():
+class SimpleHashConnector():
     def __init__(self, newPefix):
         self.newPefix = newPefix
 

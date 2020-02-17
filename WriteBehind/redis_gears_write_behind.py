@@ -61,7 +61,7 @@ def ShouldProcessHash(r):
         res = False
 
     if not res and uuid != '':
-        # no replication to backend is needed but ack is require
+        # no replication to connector is needed but ack is require
         idToAck = '{%s}%s' % (key, uuid)
         execute('XADD', idToAck, '*', 'status', 'done')
         execute('EXPIRE', idToAck, ackExpireSeconds)
@@ -138,7 +138,7 @@ def CreateAddToStreamFunction(self):
     def func(r):
         data = []
         data.append([ORIGINAL_KEY, r['key']])
-        data.append([self.backend.PrimaryKey(), r['key'].split(':')[1]])
+        data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
         if 'value' in r.keys():
             keys = r['value'].keys()
             if UUID_KEY in keys:
@@ -151,10 +151,10 @@ def CreateAddToStreamFunction(self):
                     WriteBehindLog(msg)
                     raise Exception(msg)
                 data.append([kInDB, r['value'][kInHash]])
-        execute('xadd', GetStreamName(self.backend.TableName()), '*', *sum(data, []))
+        execute('xadd', GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
-def CreateWriteDataFunction(backend):
+def CreateWriteDataFunction(connector):
     def func(data):
         idsToAck = []
         for d in data:
@@ -163,7 +163,7 @@ def CreateWriteDataFunction(backend):
             if uuid is not None:
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
-        backend.WriteData(data)
+        connector.WriteData(data)
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
@@ -172,8 +172,8 @@ def CreateWriteDataFunction(backend):
     return func
 
 class RGWriteBehind():
-    def __init__(self, GB, keysPrefix, mappings, backend, 
-                 name='WriteBehind', version=None, onFailedRetryInterval=5):
+    def __init__(self, GB, keysPrefix, mappings, connector, name,
+                 version=None, onFailedRetryInterval=5):
         '''
         Register a write behind execution to redis gears
 
@@ -183,17 +183,17 @@ class RGWriteBehind():
         
         mappings - a dictionary in the following format
             {
-                'name-on-redis-hash1':'name-on-backend-table1',
-                'name-on-redis-hash2':'name-on-backend-table2',
+                'name-on-redis-hash1':'name-on-connector-table1',
+                'name-on-redis-hash2':'name-on-connector-table2',
                 .
                 .
                 .
             }
     
-        backend - a backend object that implements the following methods
+        connector - a connector object that implements the following methods
             1. TableName() - returns the name of the table to write the data to
             2. PrimaryKey() - returns the name of the public key of the relevant table
-            3. PrepereQueries(mappings) - will be called at start to allow the backend to
+            3. PrepereQueries(mappings) - will be called at start to allow the connector to
                 prepere the quiries. This function is not mandatory and will be called only
                 if exists.
             4. WriteData(data) - 
@@ -209,7 +209,7 @@ class RGWriteBehind():
                     }
 
                 The streamId is a unique id of the dictionary and can be used by the 
-                backend to achieve exactly once property. The idea is to write the 
+                connector to achieve exactly once property. The idea is to write the 
                 last streamId of a batch into another table. When new connection
                 established, this streamId should be read from the database and
                 data with lower stream id should be ignored
@@ -234,13 +234,13 @@ class RGWriteBehind():
 
         UnregisterOldVersions(name, version)
 
-        self.backend = backend
+        self.connector = connector
         self.mappings = mappings
 
         try:
-            self.backend.PrepereQueries(self.mappings)
+            self.connector.PrepereQueries(self.mappings)
         except Exception as e:
-            WriteBehindLog('Skip calling PrepereQueries of backend, err="%s"' % str(e))
+            WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
 
 
         ## create the execution to write each changed key to stream
@@ -250,7 +250,7 @@ class RGWriteBehind():
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
-        filter(lambda x: x['key'] != GetStreamName(self.backend.TableName())).\
+        filter(lambda x: x['key'] != GetStreamName(self.connector.TableName())).\
         filter(ShouldProcessHash).\
         foreach(CreateAddToStreamFunction(self)).\
         register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del'])
@@ -259,13 +259,13 @@ class RGWriteBehind():
         descJson = {
             'name':'%s.StreamReader' % name,
             'version':version,
-            'desc':'read from stream and write to DB table %s' % self.backend.TableName(),
+            'desc':'read from stream and write to DB table %s' % self.connector.TableName(),
         }
         GB('StreamReader', desc=json.dumps(descJson)).\
         aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
-        foreach(CreateWriteDataFunction(self.backend)).\
+        foreach(CreateWriteDataFunction(self.connector)).\
         count().\
-        register(regex='_%s-stream-*' % self.backend.TableName(),
+        register(regex='_%s-stream-*' % self.connector.TableName(),
                  mode="async_local",
                  batch=100,
                  duration=100,

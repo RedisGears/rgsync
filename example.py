@@ -1,12 +1,17 @@
 from WriteBehind import RGWriteBehind
-from WriteBehind.Backends import MySqlBackend
+from WriteBehind.Connectors import MySqlConnector, MySqlConnection
 
 '''
-Create mysql person backend
+Create MySql connection object
+'''
+mySqlConnection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
+
+'''
+Create mysql person connector
 person1 - mysql table to put the data
 id - primary key
 '''
-mySqlPersonBackend = MySqlBackend('demouser', 'Password123!', 'localhost:3306/test', 'person1', 'id')
+mySqlPersonConnector = MySqlConnector(mySqlConnection, 'person1', 'id')
 
 personMappings = {
 	'first_name':'first',
@@ -14,18 +19,18 @@ personMappings = {
 	'age':'age'
 }
 
-RGWriteBehind(GB, keysPrefix='person2', mappings=personMappings, backend=mySqlPersonBackend, name='PersonWriteBehind', version='99.99.99')
+RGWriteBehind(GB, keysPrefix='person2', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteBehind', version='99.99.99')
 
 '''
-Create mysql car backend
+Create mysql car connector
 car - mysql table to put the data
 id - primary key
 '''
-mySqlCarBackend = MySqlBackend('demouser', 'Password123!', 'localhost:3306/test', 'car', 'id')
+mySqlCarConnector = MySqlConnector(mySqlConnection, 'car', 'id')
 
 carMappings = {
 	'id':'id',
 	'color':'color'
 }
 
-RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, backend=mySqlCarBackend, name='CarsWriteBehind', version='99.99.99')
+RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, connector=mySqlCarConnector, name='CarsWriteBehind', version='99.99.99')
