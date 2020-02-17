@@ -73,6 +73,9 @@ Or if you want to add a hash without replicate it to the connector, just do:
 hset person2:1 first_name foo last_name bar age 20 # +
 ```
 
+# Exactly Once Property
+By default Write Behind recipe promise the at least once property, i.e the data will be written to the target at least once. In addition Write Behind recipe gives the connector writer the ability to support the exactly once property by using the stream ID's as a an increasing id of the operations. The connector writer can write the last stream id written to the target to another table in the target and make sure stream IDs will only be written once. All the sql connectors support this capabiliteis. To use this capability you need to give the connector the exactly once table name. This table should contains 2 columns, the `id` which represent some unique id of the writer (used to distinguish between shards for example) and `val` which is the last stream ID written to the target. It can be given to the connector on constructor using the optional `exactlyOnceTableName` variable.
+
 # Get Acknowledgement
 Sometimes you want to get an acknowledge that your data was successfully written to the target. Write Behind recipe allows you do get this acknowledgement in the following maner:
 * Generate a `uuid`
