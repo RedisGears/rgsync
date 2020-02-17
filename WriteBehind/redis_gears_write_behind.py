@@ -62,7 +62,7 @@ def ShouldProcessHash(r):
 
     if not res and uuid != '':
         # no replication to backend is needed but ack is require
-        '{%s}%s' % (key, uuid)
+        idToAck = '{%s}%s' % (key, uuid)
         execute('XADD', idToAck, '*', 'status', 'done')
         execute('EXPIRE', idToAck, ackExpireSeconds)
 
@@ -167,7 +167,7 @@ def CreateWriteDataFunction(backend):
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
-            execute('EXPIRE', idToAck, ackExpireSeconds)
+            execute('EXPIRE', idToAck, 3600)
 
     return func
 

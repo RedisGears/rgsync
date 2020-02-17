@@ -43,3 +43,50 @@ Use [this](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py
 ```bash
 python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
 ```
+# How Does it Work?
+* Key is written to the database and trigger the first Gear registration
+* The Gears registration writes the data to Redis stream which trigger the second Gear registration
+* The second Gear registration read the data from the Redis stream and write it to mysql
+
+## Why Redis Stream is Required?
+The first Gear registration is a sync registration, which means that it triggers on the same thread on which the command was executed (i.e, the main thread, It is possible to trigger an async registration but then redis will return the reply before the data was actually written to somewhere and if the redis will crash before the registration will finish we will lose the event). Writing directly to the database is slow and will come with performance panelty, so we have a Redis stream that store all the changes and an async execution that reads from the Redis stream and write to the database in the background.
+
+# Advance Usage
+Sometimes you want to delete/add data to redis without replicate it to the backend. It is easy to acheive it by adding the `#` field to the hash with one of the following operations as a value:
+* `+` - Add the data without replicating
+* `=` - Add the data with replicating (the default behavior)
+* `-` - delete the data without replicating
+* `~` - delete the data with replicating (the default behavior when using `del` command)
+
+If the `#` field exist the Write Behind recipe will act according to its value and then delete the `#` field. So for example, to delete a hash without replicating the delete operation just do:
+```
+hset person2:1 # -
+```
+
+Or if you want to add a hash without replicate it to the database, just do:
+```
+hset person2:1 first_name foo last_name bar age 20 # +
+```
+
+# Get Acknowledge
+Sometime you want to get an acknowledge that your data was successfully written to the database. Write Behind recipe allows you do get this acknowledgement in the following maner:
+* Generate a `uuid`
+* Add this `uuid` to the value of the `#` field right after the operation (i.e, after `+`/`=`/`-`/`~`, notice that you must specify an operation if you use this feature)
+* Do `XREAD BLOCK <timeout> STREAMS {<hash key>}<uuid> 0-0`. After the data is written to the backend the Write Behind recipe will push a data to this stream (`{<hash key>}<uuid>`) with the following field and value : `{'status':'done'}`.
+* It is recommened to delete the stream after getting the acknowledgement though its not a must, the stream are created with an expiration value of one hour.
+
+## Example
+```
+127.0.0.1:6379> hset person2:1 first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
+(integer) 1
+127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person2:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
+1) 1) "{person2:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
+   2) 1) 1) "1581927201056-0"
+         2) 1) "status"
+            2) "done"
+```
+
+# Recommendation
+To avoid events lose that will follow with inconsistancies between Redis and the backend it is highly recommended to use replication. When the primary crash and the secondary is promoted, the secondary will continue from where the primary stopped.
+
+It is also possible to use AOF to make sure we do not lose events.
