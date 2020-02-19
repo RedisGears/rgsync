@@ -13,12 +13,15 @@ jobs:
           name: download_RedisGears
           command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; apt-get install -y unzip; unzip redisgears.linux-bionic-x64.master.zip
       - run:
-          name: start_RedisGears
-          command: redis-server --loadmodule ../redisgears.so&
+          name: download_RedisGears_deps
+          command: cd ..; wget wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz; cd /; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
       - checkout
       - run:
           name: install_write_behind_to_RedisGears_virtual_env
           command: source /var/opt/redislabs/lib/modules/python3/.venv/bin/activate; python setup.py install
+      - run:
+          name: start_RedisGears
+          command: redis-server --loadmodule ../redisgears.so&
 
 
 workflows:
