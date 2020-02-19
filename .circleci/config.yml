@@ -21,14 +21,14 @@ jobs:
           command: source /var/opt/redislabs/lib/modules/python3/.venv/bin/activate; python setup.py install
       - run:
           name: initialize_my_sql
-          command:
-            service mysql start;
-            mysql -u root --execute "CREATE DATABASE test";
-            mysql -u root --execute "CREATE TABLE test.persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, second VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));";
-            mysql -u root --execute "INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('demouser','localhost',PASSWORD('demopassword'),'','','');";
-            mysql -u root --execute "FLUSH PRIVILEGES;";
-            mysql -u root --execute "GRANT ALL PRIVILEGES ON test.* to demouser@localhost;";
-            mysql -u root --execute "FLUSH PRIVILEGES;";
+          command: |
+            service mysql start
+            mysql -u root --execute "CREATE DATABASE test"
+            mysql -u root --execute "CREATE TABLE test.persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, second VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));"
+            mysql -u root --execute "INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('demouser','localhost',PASSWORD('demopassword'),'','','');"
+            mysql -u root --execute "FLUSH PRIVILEGES;"
+            mysql -u root --execute "GRANT ALL PRIVILEGES ON test.* to demouser@localhost;"
+            mysql -u root --execute "FLUSH PRIVILEGES;"
           name: start_RedisGears
           command: redis-server --loadmodule ../redisgears.so&
 
