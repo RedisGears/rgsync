@@ -1,25 +1,27 @@
 # WriteBehind
 Write Behind Recipe for [RedisGears](https://github.com/RedisGears/RedisGears)
-# Demo
+
+## Demo
 ![WriteBehind demo](demo/WriteBehindDemo.gif)
 
-# Example
-Running this example will write all hash with prefix `person:<id>` to mysql database table `person_table` (using `<id>` as a primary key mapped to `person_id`) and all hash with prefix `car:<id>` to mysql database table `car_table`
+## Example
+The following is a RedisGears recipe that shows how to use the write behind pattern to map data from Redis Hashes to MySQL tables. The recipe maps all Redis Hashes with the prefix `person:<id>` to the MySQL table `persons`, with `<id>` being the a primary key and mapped to the `person_id` column. In a similar fashion, it maps all Hashes with the prefix `car:<id>` to the `cars` table.
+
 ```python
 from WriteBehind import RGWriteBehind
 from WriteBehind.Connectors import MySqlConnector, MySqlConnection
 
 '''
-Create MySql connection object
+Create MySQL connection object
 '''
 mySqlConnection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
 
 '''
-Create mysql person connector
-person_table - mysql table to put the data
+Create MySQL person connector
+persons - MySQL table to put the data
 person_id - primary key
 '''
-mySqlPersonConnector = MySqlConnector(mySqlConnection, 'person_table', 'person_id')
+mySqlPersonConnector = MySqlConnector(mySqlConnection, 'persons', 'person_id')
 
 personMappings = {
 	'first_name':'first',
@@ -30,11 +32,11 @@ personMappings = {
 RGWriteBehind(GB, keysPrefix='person', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteBehind', version='99.99.99')
 
 '''
-Create mysql car connector
-car_table - mysql table to put the data
+Create MySQL car connector
+cars - MySQL table to put the data
 car_id - primary key
 '''
-mySqlCarConnector = MySqlConnector(mySqlConnection, 'car_table', 'car_id')
+mySqlCarConnector = MySqlConnector(mySqlConnection, 'cars', 'car_id')
 
 carMappings = {
 	'id':'id',
@@ -43,61 +45,76 @@ carMappings = {
 
 RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, connector=mySqlCarConnector, name='CarsWriteBehind', version='99.99.99')
 ```
-# Run
-Use [this](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) script to send the Gear to RedisGears:
+
+## Running the recipe
+You can use [this utility](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](example.py) and install its dependencies with the following command:
+
 ```bash
 python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
 ```
-# How Does it Work?
-* Key is written to the database and trigger the first Gear registration
-* The Gear registration writes the data to Redis stream which trigger the second Gear registration
-* The second Gear registration read the data from the Redis stream and write it to the target
 
-## Why Redis Stream is Required?
-The first Gear registration is a sync registration, which means that it triggers on the same thread on which the command was executed (i.e, the main thread, It is possible to trigger an async registration but then redis will return the reply before the data was actually written to somewhere and if the redis will crash before the registration will finish we will lose the event). Writing directly to the target is slow (on most targets) and will come with performance panelty, so we have a Redis stream that store all the changes and an async execution that reads from the Redis stream and write to the target in the background.
+## Overview of the recipe's operation
+The [`RGWriteBehind()` class](WriteBehind/redis_gears_write_behind.py) implements the write behind recipe, that mainly consists of two RedisGears functions and operates as follows:
+1. A write operation to a Redis Hash key triggers the execution of a RedisGears function.
+1. That RedisGears function reads the data from the Hash and writes into a Redis Stream.
+1. Another RedisGears function is executed asynchronously in the background and writes the changes to the target database.
 
-# Advance Usage
-Sometimes you want to delete/add data to redis without replicate it to the target. It is easy to acheive it by adding the `#` field to the hash with one of the following operations as a value:
-* `+` - Add the data without replicating
-* `=` - Add the data with replicating (the default behavior)
-* `-` - delete the data without replicating
-* `~` - delete the data with replicating (the default behavior when using `del` command)
+### The motivation for using a Redis Stream
+The use of a Redis Stream in the write behind recipe implementation is to ensure the persistence of captured changes, while mitigating the performance penalty associated with shipping them to the target database.
 
-If the `#` field exist the Write Behind recipe will act according to its value and then delete it. So for example, to delete a hash without replicating the delete operation just do:
+The recipe's first RedisGears function is registered to run synchronously, which means that the function runs in the same main Redis thread in which the command was executed. This mode of execution is needed so changes events are recorded in order and to eliminate the possibility of loosing events in case of failure.
+
+Applying the changes to the target database is usually much slower, effectively excluding the possibility of doing that in the main thread. The second RedisGears function is executed asynchronously on batches and in intervals to do that.
+
+The Redis Stream is the channel through which both of the recipe's parts communicate, where the changes are persisted in order synchronously and are later processed in the background asynchronously.
+
+## Controlling what gets replicated
+Sometimes you want to modify the data in Redis without replicating it to the target. For that purpose, the recipe can be customized by adding the special field `#` to your Hash's fields and setting it to one of these values:
+* `+` - Adds the data but does not replicate it to the target
+* `=` - Adds the data with and replicates it (the default behavior)
+* `-` - Deletes the data but does not replicate
+* `~` - Deletes the data from Redis and the target (the default behavior when using `del` command)
+
+When the Hash's value contains the `#` field, the recipe will act according to its value and will delete the `#` field from the Hash afterwards. For example, the following shows how to delete a Hash without replicating the delete operation:
+
 ```
-hset person2:1 # -
+redis> HSET person:1 # -
 ```
 
-Or if you want to add a hash without replicate it to the connector, just do:
+Alternatively, to add a Hash without having it replicated:
 ```
-hset person2:1 first_name foo last_name bar age 20 # +
+redis> HSET person:1 first_name foo last_name bar age 20 # +
 ```
 
-# Exactly Once Property
-By default Write Behind recipe promise the at least once property, i.e the data will be written to the target at least once. In addition Write Behind recipe gives the connector writer the ability to support the exactly once property by using the stream ID's as a an increasing id of the operations. The connector writer can write the last stream id written to the target to another table in the target and make sure stream IDs will only be written once. All the sql connectors support this capabiliteis. To use this capability you need to give the connector the exactly once table name. This table should contains 2 columns, the `id` which represent some unique id of the writer (used to distinguish between shards for example) and `val` which is the last stream ID written to the target. It can be given to the connector on constructor using the optional `exactlyOnceTableName` variable.
+## At least once and exactly once writes
+By default the write behind recipe provides the "at least once" property for writes, meaning that data will be written once to the target, but possibly more than that in cases of failure.
 
-# Get Acknowledgement
-Sometimes you want to get an acknowledge that your data was successfully written to the target. Write Behind recipe allows you do get this acknowledgement in the following maner:
-* Generate a `uuid`
-* Add this `uuid` to the value of the `#` field right after the operation (i.e, after `+`/`=`/`-`/`~`, notice that you must specify an operation if you use this feature)
-* Do `XREAD BLOCK <timeout> STREAMS {<hash key>}<uuid> 0-0`. After the data is written to the target the Write Behind recipe will push a data to this stream (`{<hash key>}<uuid>`) with the following field and value : `{'status':'done'}`.
-* It is recommended to delete the stream after getting the acknowledgement though its not a must, the stream are created with an expiration value of one hour.
+It is possible to have recipe provide "exactly once" delivery semantics by using the Stream's message ID as an increasing ID of the operations. The writer RedisGears function can use that ID and record it in another table in the target to ensure that any given ID is only be written once.
 
-## Example
+All of the recipe's SQL connectors support this capability. To use it, you need to provide the connector with the name of the "exactly once" table. This table should contains 2 columns, the `id` which represent some unique ID of the writer (used to distinguish between shards for example) and `val` which is the last Stream ID written to the target. The "exactly once" table's name can be specified to the connector in the constructor via the optional `exactlyOnceTableName` variable.
+
+## Getting write acknowledgement
+It is possible to use the recipe and get an acknowledgement of successful writes to the target. Follow this steps to do so:
+1. For each data-changing operation generate a `uuid`.
+2. Add the operation's `uuid` immediately after the value in the special `#` field , that is after the `+`/`=`/`-`/`~` character. Enabling write acknowledgement requires the use of the special `#`.
+3. After performing the operation, perform an `XREAD BLOCK <timeout> STREAMS {<hash key>}<uuid> 0-0`. Once the recipe has written to the target, it will create a message in that (`{<hash key>}<uuid>`) Stream that has a single field named 'status' with the value 'done'.
+4. For housekeeping purposes it is recommended to delete that Stream after getting the acknowledgement. This is not a a must, however, as these Streams are created with TTL of one hour.
+
+### Acknowledgement example
 ```
-127.0.0.1:6379> hset person2:1 first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
+127.0.0.1:6379> hset person:1 first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
 (integer) 1
-127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person2:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
-1) 1) "{person2:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
+127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
+1) 1) "{person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
    2) 1) 1) "1581927201056-0"
          2) 1) "status"
             2) "done"
 ```
 
-# Recommendations
-To avoid events lost, that will follow with inconsistencies between Redis and the target, it is highly recommended to use replication. When the primary crash and the secondary is promoted, the secondary will continue from where the primary stopped.
+## Data persistence and availability
+To avoid data loss in Redis and the resulting inconsistencies with the target databases, it is recommended to employ and use this recipe only with a highly-available Redis environment. In such environments, the failure of a master node will cause the replica that replaced it to continue the recipe's execution from the point it was stopped.
 
-It is also possible to use AOF to make sure we do not lose events.
+Furthermore, Redis' AOF should be used alongside replication to protect against data loss during system-wide failures.
 
-# Monitor
-Use [this](https://github.com/RedisGears/RedisGearsMonitor) to monitor the created registrations
+## Monitoring the RedisGears function registrations
+Use [this](https://github.com/RedisGears/RedisGearsMonitor) to monitor RedisGear's function registrations.
