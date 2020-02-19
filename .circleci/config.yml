@@ -7,9 +7,6 @@ jobs:
           name: Redis_5_upgrade
           command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
       - run:
-          name: Redis_5_upgrade
-          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
-      - run:
           name: install_MySql
           command: apt-get update; apt-get install mysql-server
       - run:
