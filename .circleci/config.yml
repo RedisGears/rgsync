@@ -8,7 +8,7 @@ jobs:
           command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
       - run:
           name: install_MySql
-          command: apt-get update; apt-get install mysql-server
+          command: apt-get update; apt-get install -y mysql-server
       - run:
           name: download_RedisGears
           command: wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; unzip redisgears.linux-bionic-x64.master.zip
