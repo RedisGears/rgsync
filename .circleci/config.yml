@@ -31,7 +31,7 @@ jobs:
             mysql -u root --execute "FLUSH PRIVILEGES;"
       - run:
           name: install RLTest
-          command: pip install git+https://github.com/Grokzen/redis-py-cluster.git@master git+https://github.com/RedisLabsModules/RLTest.git
+          command: pip install git+https://github.com/Grokzen/redis-py-cluster.git@master git+https://github.com/RedisLabsModules/RLTest.git sqlalchemy PyMySQL
       - run:
           name: run_tests
           command: RLTest --module ../redisgears.so
