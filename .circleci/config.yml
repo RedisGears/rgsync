@@ -1,0 +1,37 @@
+jobs:
+  ubuntu:
+    docker:
+      - image: 'redislabsmodules/rmbuilder:latest'
+    steps:
+      - run:
+          name: Redis_5_upgrade
+          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
+      - run:
+          name: Redis_5_upgrade
+          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
+      - run:
+          name: install_MySql
+          command: apt-get update; apt-get install mysql-server
+      - run:
+          name: download_RedisGears
+          command: wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; unzip redisgears.linux-bionic-x64.master.zip
+      - run:
+          name: start_RedisGears
+          command: redis-server --loadmodule ./redisgears.so&
+      - checkout
+      - run:
+          name: install_write_behind_to_RedisGears_virtual_env
+          command: source /var/opt/redislabs/lib/modules/python3/.venv/bin/activate; python setup.py install
+
+
+workflows:
+  version: 2
+
+  default_flow:
+    jobs:
+      - ubuntu:
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
