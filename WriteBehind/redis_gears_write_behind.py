@@ -8,6 +8,7 @@ OPERATION_UPDATE_REPLICATE = '='
 OPERATION_UPDATE_NOREPLICATE = '+'
 OPERATIONS = [OPERATION_DEL_REPLICATE, OPERATION_DEL_NOREPLICATE, OPERATION_UPDATE_REPLICATE, OPERATION_UPDATE_NOREPLICATE]
 defaultOperation = OPERATION_UPDATE_REPLICATE
+ackExpireSeconds = 3600
 
 def ShouldProcessHash(r):
     hasValue = 'value' in r.keys()
@@ -41,13 +42,21 @@ def ShouldProcessHash(r):
                 WriteBehindLog(msg)
                 raise Exception(msg)
             uuid = value['#'][1:]
+            if operation == OPERATION_DEL_REPLICATE:
+                r['value'] = {}
             if uuid != '':
-                value[UUID_KEY] = uuid
+                r['value'][UUID_KEY] = uuid
             # delete the # field, we already got the information we need
-            value.pop('#', None)
             execute('hdel', key, '#')
 
     res = True
+
+    if operation == OPERATION_DEL_REPLICATE:
+        # we need to just delete the key but delete it directly will cause
+        # key unwanted key space notification so we need to rename it first
+        newKey = '__{%s}__' % key
+        execute('RENAME', key, newKey)
+        execute('DEL', newKey)
 
     if operation == OPERATION_DEL_NOREPLICATE:
         # we need to just delete the key but delete it directly will cause
@@ -140,17 +149,19 @@ def CreateAddToStreamFunction(self):
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
         if 'value' in r.keys():
+            uuid = r['value'].pop(UUID_KEY, None)
             keys = r['value'].keys()
-            if UUID_KEY in keys:
-                data.append([UUID_KEY, r['value'][UUID_KEY]])
-            for kInHash, kInDB in self.mappings.items():
-                if kInHash.startswith('_'):
-                    continue
-                if kInHash not in keys:
-                    msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
-                    WriteBehindLog(msg)
-                    raise Exception(msg)
-                data.append([kInDB, r['value'][kInHash]])
+            if uuid is not None:
+                data.append([UUID_KEY, uuid])
+            if len(keys) > 0:
+                for kInHash, kInDB in self.mappings.items():
+                    if kInHash.startswith('_'):
+                        continue
+                    if kInHash not in keys:
+                        msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
+                        WriteBehindLog(msg)
+                        raise Exception(msg)
+                    data.append([kInDB, r['value'][kInHash]])
         execute('xadd', GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
@@ -167,7 +178,7 @@ def CreateWriteDataFunction(connector):
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
-            execute('EXPIRE', idToAck, 3600)
+            execute('EXPIRE', idToAck, ackExpireSeconds)
 
     return func
 
