@@ -10,6 +10,18 @@ OPERATIONS = [OPERATION_DEL_REPLICATE, OPERATION_DEL_NOREPLICATE, OPERATION_UPDA
 defaultOperation = OPERATION_UPDATE_REPLICATE
 ackExpireSeconds = 3600
 
+def SafeDeleteKey(key):
+    '''
+    Deleting a key by first renaming it so we will not trigger another execution
+    If key does not exists we will get an execution and ignore it
+    '''
+    try:
+        newKey = '__{%s}__' % key
+        execute('RENAME', key, newKey)
+        execute('DEL', newKey)
+    except Exception:
+        pass
+
 def ShouldProcessHash(r):
     hasValue = 'value' in r.keys()
     operation = defaultOperation
@@ -54,16 +66,12 @@ def ShouldProcessHash(r):
     if operation == OPERATION_DEL_REPLICATE:
         # we need to just delete the key but delete it directly will cause
         # key unwanted key space notification so we need to rename it first
-        newKey = '__{%s}__' % key
-        execute('RENAME', key, newKey)
-        execute('DEL', newKey)
+        SafeDeleteKey(key)
 
     if operation == OPERATION_DEL_NOREPLICATE:
         # we need to just delete the key but delete it directly will cause
         # key unwanted key space notification so we need to rename it first
-        newKey = '__{%s}__' % key
-        execute('RENAME', key, newKey)
-        execute('DEL', newKey)
+        SafeDeleteKey(key)
         res = False
 
     if operation == OPERATION_UPDATE_NOREPLICATE:
