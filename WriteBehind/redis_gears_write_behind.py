@@ -57,14 +57,16 @@ def ShouldProcessHash(r):
         newKey = '__{%s}__' % key
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
-    elif operation == OPERATION_DEL_NOREPLICATE:
+        
+    if operation == OPERATION_DEL_NOREPLICATE:
         # we need to just delete the key but delete it directly will cause
         # key unwanted key space notification so we need to rename it first
         newKey = '__{%s}__' % key
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
         res = False
-    elif operation == OPERATION_UPDATE_NOREPLICATE:
+        
+    if operation == OPERATION_UPDATE_NOREPLICATE:
         res = False
 
     if not res and uuid != '':
