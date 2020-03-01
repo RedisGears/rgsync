@@ -259,6 +259,7 @@ class RGWriteBehind():
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
+        filter(lambda x: x['key'] != GetStreamName(self.connector.TableName())).\
         filter(ShouldProcessHash).\
         foreach(CreateAddToStreamFunction(self)).\
         register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del'])
