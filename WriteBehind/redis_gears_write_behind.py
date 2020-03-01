@@ -36,12 +36,12 @@ def ShouldProcessHash(r):
                 msg = 'Got no operation'
                 WriteBehindLog(msg)
                 raise Exception(msg)
-            operation = opVal[0]
+            operation = value['#'][0]
             if operation not in OPERATIONS:
                 msg = 'Got unknown operations "%s"' % operation
                 WriteBehindLog(msg)
                 raise Exception(msg)
-            uuid = opVal[1:]
+            uuid = value['#'][1:]
             if operation == OPERATION_DEL_REPLICATE:
                 r['value'] = {}
             if uuid != '':
@@ -57,7 +57,7 @@ def ShouldProcessHash(r):
         newKey = '__{%s}__' % key
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
-        
+
     if operation == OPERATION_DEL_NOREPLICATE:
         # we need to just delete the key but delete it directly will cause
         # key unwanted key space notification so we need to rename it first
@@ -65,7 +65,7 @@ def ShouldProcessHash(r):
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
         res = False
-        
+
     if operation == OPERATION_UPDATE_NOREPLICATE:
         res = False
 
@@ -149,9 +149,8 @@ def CreateAddToStreamFunction(self):
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
         if 'value' in r.keys():
-            value = r['value'] 
-            uuid = value.pop(UUID_KEY, None)
-            keys = value.keys()
+            uuid = r['value'].pop(UUID_KEY, None)
+            keys = r['value'].keys()
             if uuid is not None:
                 data.append([UUID_KEY, uuid])
             if len(keys) > 0:
@@ -162,7 +161,7 @@ def CreateAddToStreamFunction(self):
                         msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
                         WriteBehindLog(msg)
                         raise Exception(msg)
-                    data.append([kInDB, value[kInHash]])
+                    data.append([kInDB, r['value'][kInHash]])
         execute('xadd', GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
@@ -254,6 +253,7 @@ class RGWriteBehind():
         except Exception as e:
             WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
 
+
         ## create the execution to write each changed key to stream
         descJson = {
             'name':'%s.KeysReader' % name,
@@ -281,4 +281,5 @@ class RGWriteBehind():
                  batch=100,
                  duration=100,
                  onFailedPolicy="retry",
-                 onFailedRetryInterval=onFailedRetryInterval)       
+                 onFailedRetryInterval=onFailedRetryInterval)
+        
