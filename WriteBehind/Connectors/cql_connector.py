@@ -1,4 +1,4 @@
-from WriteBehind.common import WriteBehindLog, WriteBehindDebug
+from WriteBehind.common import *
 from redisgears import getMyHashTag as hashtag
 import json
 
@@ -53,6 +53,7 @@ class CqlConnector:
         self.exactlyOnceLastId = None
         self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
         self.session = None
+        self.supportedOperations = [OPERATION_DEL_REPLICATE, OPERATION_UPDATE_REPLICATE]
 
     def PrepereQueries(self, mappings):
         def GetUpdateQuery(tableName, mappings, pk):
@@ -103,7 +104,7 @@ class CqlConnector:
             from cassandra.cluster import BatchStatement
             batch = BatchStatement()
             # we have only key name, original_key, streamId, it means that the key was deleted
-            isAddBatch = True if len(data[0].keys()) > 3 else False
+            isAddBatch = True if data[0][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
             query = self.addQuery if isAddBatch else self.delQuery
             stmt = self.session.prepare(query)
             lastStreamId = None
@@ -112,8 +113,15 @@ class CqlConnector:
                 if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
                     WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
                     continue
+
+                op = x.pop(OP_KEY, None)
+                if op not in self.supportedOperations:
+                    msg = 'Got unknown operation'
+                    WriteBehindLog(msg)
+                    raise Exception(msg) from None
+
                 self.shouldCompareId = False
-                if len(x.keys()) == 1: # we have only key name, it means that the key was deleted
+                if op != OPERATION_UPDATE_REPLICATE: # we have only key name, it means that the key was deleted
                     if isAddBatch:
                         self.session.execute(batch)
                         batch = BatchStatement()
