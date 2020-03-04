@@ -14,36 +14,36 @@ from WriteBehind.Connectors import MySqlConnector, MySqlConnection
 '''
 Create MySQL connection object
 '''
-mySqlConnection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
+connection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
 
 '''
-Create MySQL person connector
+Create MySQL persons connector
 persons - MySQL table to put the data
 person_id - primary key
 '''
-mySqlPersonConnector = MySqlConnector(mySqlConnection, 'persons', 'person_id')
+personConnector = MySqlConnector(mySqlConnection, 'persons', 'person_id')
 
-personMappings = {
+personsMappings = {
 	'first_name':'first',
 	'last_name':'last',
 	'age':'age'
 }
 
-RGWriteBehind(GB, keysPrefix='person', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteBehind', version='99.99.99')
+RGWriteBehind(GB, keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind', version='99.99.99')
 
 '''
 Create MySQL car connector
 cars - MySQL table to put the data
 car_id - primary key
 '''
-mySqlCarConnector = MySqlConnector(mySqlConnection, 'cars', 'car_id')
+carConnector = MySqlConnector(connection, 'cars', 'car_id')
 
-carMappings = {
+carsMappings = {
 	'id':'id',
 	'color':'color'
 }
 
-RGWriteBehind(GB, keysPrefix='car', mappings=carMappings, connector=mySqlCarConnector, name='CarsWriteBehind', version='99.99.99')
+RGWriteBehind(GB, keysPrefix='cars', mappings=carsMappings, connector=carsConnector, name='CarsWriteBehind', version='99.99.99')
 ```
 
 ## Running the recipe
@@ -83,7 +83,7 @@ redis> HSET person:1 # -
 
 Alternatively, to add a Hash without having it replicated:
 ```
-redis> HSET person:1 first_name foo last_name bar age 20 # +
+redis> HSET person:007 first_name James last_name Bond age 42 # +
 ```
 
 ## At least once and exactly once writes
@@ -102,7 +102,7 @@ It is possible to use the recipe and get an acknowledgement of successful writes
 
 ### Acknowledgement example
 ```
-127.0.0.1:6379> hset person:1 first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
+127.0.0.1:6379> hset person:007 first_name James last_name Bond age 42 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
 (integer) 1
 127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
 1) 1) "{person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
