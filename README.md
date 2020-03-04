@@ -116,7 +116,7 @@ Write through is performed by writing to a temporary key, the recipe will regist
 write the data to the target. The write operation will be execute on the main thread which means that the client will not
 get the reply until it will finished (with success or failure). On succuss, the recipe will rename the key to have the correct name. On failure, the key will not be touched. In any case the temporary key will be deleted. The acknowledgement stream semantics is the same as with write behind with one small change, on failure the acknowledgement stream will be populated with the value `failed` under the `status` field and in addition another field called `error` will be created and will contain the reason for the failure (connection lost/arguments missing ...). Notice that with write through it is mandatory to suply a uuid and read the acknowledgement stream, this is the only way to know if write was successfully writen to the target or not.
 
-Defining write through is done using `RGWriteThrough` class:
+Write through registration can be created using `RGWriteThrough` class:
 ```python
 RGWriteThrough(GB, keysPrefix, mappings, connector, name, version)
 ```
