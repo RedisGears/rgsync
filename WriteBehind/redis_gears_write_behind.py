@@ -253,7 +253,7 @@ def TryWriteToTarget(self):
             WriteBehindLog("Failed writing data to the database, error='%s'", str(e))
             # lets update the ack stream to failure
             if uuid is not None:
-                execute('XADD', idToAck, '*', 'status', 'failed')
+                execute('XADD', idToAck, '*', 'status', 'failed', 'error', str(e))
                 execute('EXPIRE', idToAck, ackExpireSeconds)
             return False
         return True

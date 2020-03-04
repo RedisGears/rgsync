@@ -9,7 +9,7 @@ def Connect():
     conn = engine.connect()
     return conn
 
-class testUnregister:
+class testWriteBehind:
     def __init__(self):
         self.env = Env()
         f = open('./example.py', 'rt')
@@ -271,5 +271,4 @@ class testUnregister:
 
         # make sure data is deleted from redis
         self.env.expect('hgetall', 'person:1').equal({})
-
 

@@ -111,6 +111,51 @@ It is possible to use the recipe and get an acknowledgement of successful writes
             2) "done"
 ```
 
+## Write Through
+Write through is performed by writing to a temporary key, the recipe will register on changes to this temporary key and will
+write the data to the target. The write operation will be execute on the main thread which means that the client will not
+get the reply until it will finished (with success or failure). On succuss, the recipe will rename the key to have the correct name. On failure, the key will not be touched. In any case the temporary key will be deleted. The acknowledgement stream semantics is the same as with write behind with one small change, on failure the acknowledgement stream will be populated with the value `failed` under the `status` field and in addition another field called `error` will be created and will contain the reason for the failure (connection lost/arguments missing ...). Notice that with write through it is mandatory to suply a uuid and read the acknowledgement stream, this is the only way to know if write was successfully writen to the target or not.
+
+Defining write through is done using `RGWriteThrough` class:
+```python
+RGWriteThrough(GB, keysPrefix, mappings, connector, name, version)
+```
+
+The `keysPrefix` is the prefix of the key on which the write through will be trigger. The termporary key pattern should be `<keysPrefix>{<realKeyName>}`. On success, the key will be renamed to `<realKeyName>`
+
+Notice any failure on updating the database will cause the recipe to abort and not to rename the temporary key. On connection failure it sometimes impossible to know if the transaction was successfully performed on the targer, the recipe will consider this case as a failure though it might have been successed.
+
+### Example
+```
+## assuming the keysPrefix is '__'
+127.0.0.1:6379> hset __{person:1} first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
+(integer) 4
+127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
+1) 1) "{person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
+   2) 1) 1) "1583321726502-0"
+         2) 1) "status"
+            2) "done"
+127.0.0.1:6379> hgetall person:1
+1) "age"
+2) "20"
+3) "last_name"
+4) "bar"
+5) "first_name"
+6) "foo"
+
+## write through failure example
+127.0.0.1:6379> hset __{person:1} first_name foo last_name bar age 20 # =6ce0c902-30c2-4ac9-8342-2f04fb359a94
+(integer) 4
+127.0.0.1:6379> XREAD BLOCK 2000 STREAMS {person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94 0-0
+1) 1) "{person:1}6ce0c902-30c2-4ac9-8342-2f04fb359a94"
+   2) 1) 1) "1583322141455-0"
+         2) 1) "status"
+            2) "failed"
+            3) "error"
+            4) "Failed connecting to SQL database, error=\"(pymysql.err.OperationalError) (2003, \"Can't connect to MySQL server on 'localhost' ([Errno 111] Connection refused)\")\n(Background on this error at: http://sqlalche.me/e/e3q8)\""
+
+```
+
 ## Data persistence and availability
 To avoid data loss in Redis and the resulting inconsistencies with the target databases, it is recommended to employ and use this recipe only with a highly-available Redis environment. In such environments, the failure of a master node will cause the replica that replaced it to continue the recipe's execution from the point it was stopped.
 
