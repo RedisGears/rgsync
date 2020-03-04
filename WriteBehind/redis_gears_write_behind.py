@@ -1,13 +1,7 @@
 from redisgears import executeCommand as execute
-from WriteBehind.common import WriteBehindLog, WriteBehindDebug, GetStreamName, ORIGINAL_KEY, UUID_KEY
+from WriteBehind.common import *
 import json
 
-OPERATION_DEL_REPLICATE = '~'
-OPERATION_DEL_NOREPLICATE = '-'
-OPERATION_UPDATE_REPLICATE = '='
-OPERATION_UPDATE_NOREPLICATE = '+'
-OPERATIONS = [OPERATION_DEL_REPLICATE, OPERATION_DEL_NOREPLICATE, OPERATION_UPDATE_REPLICATE, OPERATION_UPDATE_NOREPLICATE]
-defaultOperation = OPERATION_UPDATE_REPLICATE
 ackExpireSeconds = 3600
 
 def SafeDeleteKey(key):
@@ -22,51 +16,53 @@ def SafeDeleteKey(key):
     except Exception:
         pass
 
-def ShouldProcessHash(r):
-    hasValue = 'value' in r.keys()
-    operation = defaultOperation
-    uuid = ''
+def ValidateHash(r):
+    key = r['key']
+    value = r['value'] if 'value' in r.keys() else {}
 
-    if not hasValue:
-        # delete command, use the ~ (delete) operation
-        operation = OPERATION_DEL_REPLICATE
+    if value == {}:
+        # key without value consider delete
+        value[OP_KEY] = OPERATION_DEL_REPLICATE
     else:
         # make sure its a hash
         if not (isinstance(r['value'], dict)) :
             msg = 'Got a none hash value, key="%s" value="%s"' % (str(r['key']), str(r['value'] if 'value' in r.keys() else 'None'))
             WriteBehindLog(msg)
             raise Exception(msg)
+        if OP_KEY not in value.keys():
+            value[OP_KEY] = defaultOperation
+        else:
+            # we need to delete the operation key for the hash
+            execute('hdel', key, OP_KEY)
 
+    op = value[OP_KEY]
+    if len(op) == 0:
+        msg = 'Got no operation'
+        WriteBehindLog(msg)
+        raise Exception(msg)
 
+    operation = op[0]
+
+    if operation not in OPERATIONS:
+        msg = 'Got unknown operations "%s"' % operation
+        WriteBehindLog(msg)
+        raise Exception(msg)
+
+    # lets extrac uuid to ack on
+    uuid = op[1:]
+    value[UUID_KEY] = uuid
+    value[OP_KEY] = operation
+
+    r['value'] = value
+
+    return True
+
+def ShouldProcessHash(r):
     key = r['key']
-
-    if hasValue:
-        value = r['value']
-        if '#' in value.keys():
-            opVal = value['#']
-            if len(opVal) == 0:
-                msg = 'Got no operation'
-                WriteBehindLog(msg)
-                raise Exception(msg)
-            operation = value['#'][0]
-            if operation not in OPERATIONS:
-                msg = 'Got unknown operations "%s"' % operation
-                WriteBehindLog(msg)
-                raise Exception(msg)
-            uuid = value['#'][1:]
-            if operation == OPERATION_DEL_REPLICATE:
-                r['value'] = {}
-            if uuid != '':
-                r['value'][UUID_KEY] = uuid
-            # delete the # field, we already got the information we need
-            execute('hdel', key, '#')
-
+    value = r['value']
+    uuid = value[UUID_KEY]
+    operation = value[OP_KEY]
     res = True
-
-    if operation == OPERATION_DEL_REPLICATE:
-        # we need to just delete the key but delete it directly will cause
-        # key unwanted key space notification so we need to rename it first
-        SafeDeleteKey(key)
 
     if operation == OPERATION_DEL_NOREPLICATE:
         # we need to just delete the key but delete it directly will cause
@@ -157,11 +153,14 @@ def CreateAddToStreamFunction(self):
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
         if 'value' in r.keys():
-            uuid = r['value'].pop(UUID_KEY, None)
-            keys = r['value'].keys()
+            value = r['value']
+            uuid = value.pop(UUID_KEY, None)
+            op = value[OP_KEY]
+            data.append([OP_KEY, op])
+            keys = value.keys()
             if uuid is not None:
                 data.append([UUID_KEY, uuid])
-            if len(keys) > 0:
+            if op == OPERATION_UPDATE_REPLICATE:
                 for kInHash, kInDB in self.mappings.items():
                     if kInHash.startswith('_'):
                         continue
@@ -169,7 +168,7 @@ def CreateAddToStreamFunction(self):
                         msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
                         WriteBehindLog(msg)
                         raise Exception(msg)
-                    data.append([kInDB, r['value'][kInHash]])
+                    data.append([kInDB, value[kInHash]])
         execute('xadd', GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
@@ -190,9 +189,119 @@ def CreateWriteDataFunction(connector):
 
     return func
 
-class RGWriteBehind():
-    def __init__(self, GB, keysPrefix, mappings, connector, name,
-                 version=None, onFailedRetryInterval=5):
+class RGWriteBase():
+    def __init__(self, mappings, connector, name, version=None):
+
+        UnregisterOldVersions(name, version)
+
+        self.connector = connector
+        self.mappings = mappings
+
+        try:
+            self.connector.PrepereQueries(self.mappings)
+        except Exception as e:
+            WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
+
+def DeleteKeyIfNeeded(r):
+    if r['value'][OP_KEY] == OPERATION_DEL_REPLICATE:
+        # we need to just delete the key but delete it directly will cause
+        # key unwanted key space notification so we need to rename it first
+        SafeDeleteKey(r['key'])
+
+def PrepareRecord(r):
+    key = r['key']
+    value = r['value']
+
+    realKey = key.split('{')[1].split('}')[0]
+
+    realVal = execute('hgetall', realKey)
+    realVal = {realVal[i]:realVal[i + 1] for i in range(0, len(realVal), 2)}
+
+    realVal.update(value)
+
+    # delete temporary key
+    execute('del', key)
+
+    return {'key': realKey, 'value': realVal}
+
+def TryWriteToTarget(self):
+    func = CreateWriteDataFunction(self.connector)
+    def f(r):
+        key = r['key']
+        value = r['value']
+        keys = value.keys()
+        uuid = value.pop(UUID_KEY, None)
+        idToAck = '{%s}%s' % (r['key'], uuid)
+        try:
+            operation = value[OP_KEY]
+            mappedValue = {}
+            mappedValue[ORIGINAL_KEY] = key
+            mappedValue[self.connector.PrimaryKey()] = key.split(':')[1]
+            mappedValue[UUID_KEY] = uuid
+            mappedValue[OP_KEY] = operation
+            if operation == OPERATION_UPDATE_REPLICATE:
+                for kInHash, kInDB in self.mappings.items():
+                    if kInHash.startswith('_'):
+                        continue
+                    if kInHash not in keys:
+                        msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
+                        WriteBehindLog(msg)
+                        raise Exception(msg)
+                    mappedValue[kInDB] = value[kInHash]
+            func([mappedValue])
+        except Exception as e:
+            WriteBehindLog("Failed writing data to the database, error='%s'", str(e))
+            # lets update the ack stream to failure
+            if uuid is not None:
+                execute('XADD', idToAck, '*', 'status', 'failed', 'error', str(e))
+                execute('EXPIRE', idToAck, ackExpireSeconds)
+            return False
+        return True
+    return f
+
+def UpdateHash(r):
+    key = r['key']
+    value = r['value']
+    operation = value.pop(OP_KEY, None)
+    uuid_key = value.pop(UUID_KEY, None)
+    if operation == OPERATION_DEL_REPLICATE or operation == OPERATION_DEL_NOREPLICATE:
+        SafeDeleteKey(key)
+    elif operation == OPERATION_UPDATE_REPLICATE or OPERATION_UPDATE_NOREPLICATE:
+        # we need to write to temp key and then rename so we will not 
+        # trigger another execution
+        tempKeyName = 'temp-{%s}' % key
+        elemets = []
+        for k,v in value.items():
+            elemets.append(k)
+            elemets.append(v)
+        execute('hset', tempKeyName, *elemets)
+        execute('rename', tempKeyName, key)
+    else:
+        msg = "Unknown operation"
+        WriteBehindLog(msg)
+        raise Exception(msg)
+
+def WriteNoReplicate(r):
+    if ShouldProcessHash(r):
+        # return true means hash should be replicate and we need to
+        # continue processing it
+        return True
+    # No need to replicate hash, just write it correctly to redis
+    operation = r['value'][OP_KEY]
+    if operation == OPERATION_UPDATE_NOREPLICATE:
+        UpdateHash(r)
+    elif operation == OPERATION_DEL_NOREPLICATE:
+        # OPERATION_DEL_NOREPLICATE was handled by ShouldProcessHash function
+        pass
+    else:
+        msg = "Unknown operation"
+        WriteBehindLog(msg)
+        raise Exception(msg)
+    return False
+
+class RGWriteBehind(RGWriteBase):
+    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
+                 onFailedRetryInterval=5, batch=100, duration=100):
         '''
         Register a write behind execution to redis gears
 
@@ -246,21 +355,14 @@ class RGWriteBehind():
         version - The version to set to the new created registration. Old versions with the same
                name will be removed. 99.99.99 is greater then any other version (even from itself).
 
+        batch - the batch size on which data will be writen to target
+
+        duration - interval in ms in which data will be writen to target even if batch size did not reached
+
         onFailedRetryInterval - Interval on which to performe retry on failure.
         '''
-        
-        ## create the execution to write each changed key to stream
 
-        UnregisterOldVersions(name, version)
-
-        self.connector = connector
-        self.mappings = mappings
-
-        try:
-            self.connector.PrepereQueries(self.mappings)
-        except Exception as e:
-            WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
-
+        RGWriteBase.__init__(self, mappings, connector, name, version)
 
         ## create the execution to write each changed key to stream
         descJson = {
@@ -269,9 +371,10 @@ class RGWriteBehind():
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
-        filter(lambda x: x['key'] != GetStreamName(self.connector.TableName())).\
+        filter(ValidateHash).\
         filter(ShouldProcessHash).\
         foreach(CreateAddToStreamFunction(self)).\
+        foreach(DeleteKeyIfNeeded).\
         register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del'])
 
         ## create the execution to write each key from stream to DB
@@ -286,8 +389,25 @@ class RGWriteBehind():
         count().\
         register(regex='_%s-stream-*' % self.connector.TableName(),
                  mode="async_local",
-                 batch=100,
-                 duration=100,
+                 batch=batch,
+                 duration=duration,
                  onFailedPolicy="retry",
                  onFailedRetryInterval=onFailedRetryInterval)
-        
+
+class RGWriteThrough(RGWriteBase):
+    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
+        RGWriteBase.__init__(self, mappings, connector, name, version)
+
+        ## create the execution to write each changed key to database
+        descJson = {
+            'name':'%s.KeysReader' % name,
+            'version':version,
+            'desc':'write each changed key directly to databse',
+        }
+        GB('KeysReader', desc=json.dumps(descJson)).\
+        map(PrepareRecord).\
+        filter(ValidateHash).\
+        filter(WriteNoReplicate).\
+        filter(TryWriteToTarget(self)).\
+        foreach(UpdateHash).\
+        register(mode='sync', regex='%s*' % keysPrefix, eventTypes=['hset', 'hmset'])

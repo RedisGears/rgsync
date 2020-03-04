@@ -1,4 +1,4 @@
-from WriteBehind.common import WriteBehindLog, WriteBehindDebug
+from WriteBehind.common import *
 from redisgears import getMyHashTag as hashtag
 
 def CompareIds(id1, id2):
@@ -70,6 +70,7 @@ class BaseSqlConnector():
         self.exactlyOnceLastId = None
         self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
         self.conn = None
+        self.supportedOperations = [OPERATION_DEL_REPLICATE, OPERATION_UPDATE_REPLICATE]
 
     def PrepereQueries(self, mappings):
         raise Exception('Can not use BaseSqlConnector PrepereQueries directly')
@@ -113,7 +114,7 @@ class BaseSqlConnector():
         try:
             batch = []
             # we have only key name, original_key, streamId, it means that the key was deleted
-            isAddBatch = True if len(data[0].keys()) > 3 else False
+            isAddBatch = True if data[0][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
             query = self.addQuery if isAddBatch else self.delQuery
             lastStreamId = None
             for x in data:
@@ -121,8 +122,15 @@ class BaseSqlConnector():
                 if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
                     WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
                     continue
+
+                op = x.pop(OP_KEY, None)
+                if op not in self.supportedOperations:
+                    msg = 'Got unknown operation'
+                    WriteBehindLog(msg)
+                    raise Exception(msg) from None
+
                 self.shouldCompareId = False
-                if len(x.keys()) == 1: # we have only key name, it means that the key was deleted
+                if op != OPERATION_UPDATE_REPLICATE: # we have only key name, it means that the key was deleted
                     if isAddBatch:
                         self.conn.execute(self.sqlText(query), batch)
                         batch = []
