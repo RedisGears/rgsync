@@ -267,7 +267,7 @@ def UpdateHash(r):
     if operation == OPERATION_DEL_REPLICATE or operation == OPERATION_DEL_NOREPLICATE:
         SafeDeleteKey(key)
     elif operation == OPERATION_UPDATE_REPLICATE or OPERATION_UPDATE_NOREPLICATE:
-        # we need to write to temp key and then rename so we will not 
+        # we need to write to temp key and then rename so we will not
         # trigger another execution
         tempKeyName = 'temp-{%s}' % key
         elemets = []
@@ -306,9 +306,9 @@ class RGWriteBehind(RGWriteBase):
         Register a write behind execution to redis gears
 
         GB - The Gears builder object
-        
+
         keysPrefix - Prefix on keys to register on
-        
+
         mappings - a dictionary in the following format
             {
                 'name-on-redis-hash1':'name-on-connector-table1',
@@ -317,14 +317,14 @@ class RGWriteBehind(RGWriteBase):
                 .
                 .
             }
-    
+
         connector - a connector object that implements the following methods
             1. TableName() - returns the name of the table to write the data to
             2. PrimaryKey() - returns the name of the public key of the relevant table
             3. PrepereQueries(mappings) - will be called at start to allow the connector to
                 prepere the quiries. This function is not mandatory and will be called only
                 if exists.
-            4. WriteData(data) - 
+            4. WriteData(data) -
                 data is a list of dictionaries of the following format
 
                     {
@@ -336,8 +336,8 @@ class RGWriteBehind(RGWriteBase):
 
                     }
 
-                The streamId is a unique id of the dictionary and can be used by the 
-                connector to achieve exactly once property. The idea is to write the 
+                The streamId is a unique id of the dictionary and can be used by the
+                connector to achieve exactly once property. The idea is to write the
                 last streamId of a batch into another table. When new connection
                 established, this streamId should be read from the database and
                 data with lower stream id should be ignored

@@ -19,11 +19,9 @@ personsMappings = {
 	'age':'age'
 }
 
-RGWriteBehind(GB, keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind', version='99.99.99')
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
-
-RGWriteThrough(GB, keysPrefix='__', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteThrough', version='99.99.99')
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 
 '''
 Create MySQL cars connector
