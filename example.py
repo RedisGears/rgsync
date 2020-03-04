@@ -1,4 +1,4 @@
-from WriteBehind import RGWriteBehind
+from WriteBehind import RGWriteBehind, RGWriteThrough
 from WriteBehind.Connectors import MySqlConnector, MySqlConnection
 
 '''
@@ -20,6 +20,8 @@ personMappings = {
 }
 
 RGWriteBehind(GB, keysPrefix='person', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteBehind', version='99.99.99')
+
+RGWriteThrough(GB, keysPrefix='__', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteThrough', version='99.99.99')
 
 '''
 Create MySQL car connector

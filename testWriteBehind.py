@@ -134,3 +134,142 @@ class testUnregister:
     			break
     		count+=1
     	self.env.expect('hgetall', 'person:1').equal({})
+
+    def testSimpleWriteThrough(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
+
+        # make sure data is in the dabase
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+        self.env.cmd('hset __{person:1} # ~')
+
+        # make sure data is deleted from the database
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+        self.env.expect('hgetall', 'person:1').equal({})
+
+    def testSimpleWriteThroughPartialUpdate(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
+
+        # make sure data is in the dabase
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+        self.env.cmd('hset __{person:1} first_name foo1')
+
+        # make sure data is in the dabase
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo1', 'bar', 20))
+
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo1'})
+
+        self.env.cmd('hset __{person:1} # ~')
+
+        # make sure data is deleted from the database
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+        self.env.expect('hgetall', 'person:1').equal({})
+
+    def testWriteThroughNoReplicate(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +')
+
+        # make sure data is deleted from the database
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+    def testDelThroughNoReplicate(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
+
+        # make sure data is in the dabase
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+        self.env.cmd('hset __{person:1} # -')
+
+        # make sure data was deleted from redis but not from the target
+        self.env.expect('hgetall', 'person:1').equal({})
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+
+
+        self.env.cmd('hset __{person:1} # ~')
+
+        # make sure data was deleted from target as well
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+    def testWriteTroughAckStream(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # =1')
+
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        self.env.assertEqual(res[0][1][0][1], ['status', 'done'])
+
+        # make sure data is in the dabase
+        result = self.dbConn.execute(text('select * from test.persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+
+        # make sure data is in redis
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # ~2')
+
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        self.env.assertEqual(res[0][1][0][1], ['status', 'done'])
+
+        # make sure data is deleted from the database
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+        self.env.expect('hgetall', 'person:1').equal({})
+
+    def testWriteTroughAckStreamNoReplicate(self):
+        self.env.cmd('flushall')
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +1')
+
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        self.env.assertEqual(res[0][1][0][1], ['status', 'done'])
+
+        # make sure data is not in the target
+        result = self.dbConn.execute(text('select * from test.persons'))
+        self.env.assertEqual(result.rowcount, 0)
+
+        # make sure data is in redis
+        self.env.expect('hgetall', 'person:1').equal({'age': '20', 'last_name': 'bar', 'first_name': 'foo'})
+
+        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # -2')
+
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        self.env.assertEqual(res[0][1][0][1], ['status', 'done'])
+
+        # make sure data is deleted from redis
+        self.env.expect('hgetall', 'person:1').equal({})
+
+
