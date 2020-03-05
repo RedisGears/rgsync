@@ -1,17 +1,17 @@
-from WriteBehind import RGWriteBehind, RGWriteThrough
-from WriteBehind.Connectors import MySqlConnector, MySqlConnection
+from WriteBehind import RGWriteBehind
+from WriteBehind.Connectors import CqlConnector, CqlConnection
 
 '''
-Create MySQL connection object
+Create CQL connection object
 '''
-connection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
+connection = CqlConnection('cassandra', 'cassandra', 'cassandra', 'test')
 
 '''
-Create MySQL persons connector
-persons - MySQL table to put the data
+Create CQL person connector
+persons - CQL table to put the data
 person_id - primary key
 '''
-personsConnector = MySqlConnector(connection, 'persons', 'person_id')
+personsConnector = CqlConnector(connection, 'persons', 'person_id')
 
 personsMappings = {
 	'first_name':'first',
@@ -24,11 +24,11 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 
 '''
-Create MySQL cars connector
-cars - MySQL table to put the data
+Create CQL cars connector
+cars - CQL table to put the data
 car_id - primary key
 '''
-carsConnector = MySqlConnector(connection, 'cars', 'car_id')
+carConnector = CqlConnector(connection, 'cars', 'car_id')
 
 carsMappings = {
 	'id':'id',

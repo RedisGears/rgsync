@@ -22,3 +22,19 @@ def WriteBehindDebug(msg):
 
 def GetStreamName(tableName):
     return '_%s-stream-{%s}' % (tableName, hashtag())
+
+def CompareIds(id1, id2):
+    id1_time, id1_num = [int(a) for a in id1.split('-')]
+    id2_time, id2_num = [int(a) for a in id2.split('-')]
+    if(id1_time > id2_time):
+        return 1
+    if(id1_time < id2_time):
+        return -1
+
+    if(id1_num > id2_num):
+        return 1
+    if(id1_num < id2_num):
+        return -1
+
+    return 0
+
