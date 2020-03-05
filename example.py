@@ -23,8 +23,6 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__', mappings=personMappings, connector=mySqlPersonConnector, name='PersonWriteThrough', version='99.99.99')
-
 '''
 Create MySQL cars connector
 cars - MySQL table to put the data
