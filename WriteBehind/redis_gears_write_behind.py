@@ -50,7 +50,7 @@ def ValidateHash(r):
 
     # lets extrac uuid to ack on
     uuid = op[1:]
-    value[UUID_KEY] = uuid
+    value[UUID_KEY] = uuid if uuid != '' else None
     value[OP_KEY] = operation
 
     r['value'] = value
@@ -184,7 +184,7 @@ def CreateWriteDataFunction(connector):
         for d in data:
             originalKey = d.pop(ORIGINAL_KEY, None)
             uuid = d.pop(UUID_KEY, None)
-            if uuid is not None:
+            if uuid is not None and uuid != '':
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
         connector.WriteData(data)
@@ -258,7 +258,7 @@ def TryWriteToTarget(self):
         except Exception as e:
             WriteBehindLog("Failed writing data to the database, error='%s'", str(e))
             # lets update the ack stream to failure
-            if uuid is not None:
+            if uuid is not None and uuid != '':
                 execute('XADD', idToAck, '*', 'status', 'failed', 'error', str(e))
                 execute('EXPIRE', idToAck, ackExpireSeconds)
             return False
