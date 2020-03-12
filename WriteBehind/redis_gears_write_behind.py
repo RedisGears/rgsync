@@ -57,6 +57,12 @@ def ValidateHash(r):
 
     return True
 
+def DeleteHashIfNeeded(r):
+    key = r['key']
+    operation = r['value'][OP_KEY]
+    if operation == OPERATION_DEL_REPLICATE:
+        SafeDeleteKey(key)
+
 def ShouldProcessHash(r):
     key = r['key']
     value = r['value']
@@ -373,6 +379,7 @@ class RGWriteBehind(RGWriteBase):
         GB('KeysReader', desc=json.dumps(descJson)).\
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
+        foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
         register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del', 'change'])
 
