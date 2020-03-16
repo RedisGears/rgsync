@@ -50,12 +50,18 @@ def ValidateHash(r):
 
     # lets extrac uuid to ack on
     uuid = op[1:]
-    value[UUID_KEY] = uuid
+    value[UUID_KEY] = uuid if uuid != '' else None
     value[OP_KEY] = operation
 
     r['value'] = value
 
     return True
+
+def DeleteHashIfNeeded(r):
+    key = r['key']
+    operation = r['value'][OP_KEY]
+    if operation == OPERATION_DEL_REPLICATE:
+        SafeDeleteKey(key)
 
 def ShouldProcessHash(r):
     key = r['key']
@@ -178,7 +184,7 @@ def CreateWriteDataFunction(connector):
         for d in data:
             originalKey = d.pop(ORIGINAL_KEY, None)
             uuid = d.pop(UUID_KEY, None)
-            if uuid is not None:
+            if uuid is not None and uuid != '':
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
         connector.WriteData(data)
@@ -252,7 +258,7 @@ def TryWriteToTarget(self):
         except Exception as e:
             WriteBehindLog("Failed writing data to the database, error='%s'", str(e))
             # lets update the ack stream to failure
-            if uuid is not None:
+            if uuid is not None and uuid != '':
                 execute('XADD', idToAck, '*', 'status', 'failed', 'error', str(e))
                 execute('EXPIRE', idToAck, ackExpireSeconds)
             return False
@@ -373,9 +379,9 @@ class RGWriteBehind(RGWriteBase):
         GB('KeysReader', desc=json.dumps(descJson)).\
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
+        foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        foreach(DeleteKeyIfNeeded).\
-        register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del'])
+        register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del', 'change'])
 
         ## create the execution to write each key from stream to DB
         descJson = {
