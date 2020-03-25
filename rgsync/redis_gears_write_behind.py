@@ -1,5 +1,5 @@
 from redisgears import executeCommand as execute
-from WriteBehind.common import *
+from rgsync.common import *
 import json
 
 ackExpireSeconds = 3600
