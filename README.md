@@ -1,4 +1,4 @@
-# WriteBehind
+# RGSync
 A _Write Behind_ and _Write Through_ Recipe for [RedisGears](https://github.com/RedisGears/RedisGears)
 
 ## Demo
