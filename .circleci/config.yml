@@ -14,7 +14,7 @@ jobs:
           command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/redisgears.linux-bionic-x64.0.9.0.zip; apt-get install -y unzip; unzip redisgears.linux-bionic-x64.0.9.0.zip
       - run:
           name: download_RedisGears_deps
-          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/redisgears-dependencies.linux-bionic-x64.0.9.tgz; cd /; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.0.9.tgz
+          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/redisgears-dependencies.linux-bionic-x64.0.9.0.tgz; cd /; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.0.9.0.tgz
       - checkout
       - run:
           name: install_write_behind_to_RedisGears_virtual_env
