@@ -1,5 +1,5 @@
-from WriteBehind import RGWriteBehind, RGWriteThrough
-from WriteBehind.Connectors import MySqlConnector, MySqlConnection
+from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync.Connectors import MySqlConnector, MySqlConnection
 
 '''
 Create MySQL connection object

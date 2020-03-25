@@ -8,8 +8,8 @@ A _Write Behind_ and _Write Through_ Recipe for [RedisGears](https://github.com/
 The following is a RedisGears recipe that shows how to use the _Write Behind_ pattern to map data from Redis Hashes to MySQL tables. The recipe maps all Redis Hashes with the prefix `person:<id>` to the MySQL table `persons`, with `<id>` being the primary key and mapped to the `person_id` column. Similarly, it maps all Hashes with the prefix `car:<id>` to the `cars` table.
 
 ```python
-from WriteBehind import RGWriteBehind
-from WriteBehind.Connectors import MySqlConnector, MySqlConnection
+from rgsync import RGWriteBehind
+from rgsync.Connectors import MySqlConnector, MySqlConnection
 
 '''
 Create MySQL connection object
@@ -50,11 +50,11 @@ RGWriteBehind(GB, keysPrefix='cars', mappings=carsMappings, connector=carsConnec
 You can use [this utility](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](example.py) and install its dependencies with the following command:
 
 ```bash
-python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/WriteBehind.git PyMySQL
+python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/rgsync.git PyMySQL
 ```
 
 ## Overview of the recipe's operation
-The [`RGWriteBehind()` class](WriteBehind/redis_gears_write_behind.py) implements the _Write Behind_ recipe, that mainly consists of two RedisGears functions and operates as follows:
+The [`RGWriteBehind()` class](rgsync/redis_gears_write_behind.py) implements the _Write Behind_ recipe, that mainly consists of two RedisGears functions and operates as follows:
 1. A write operation to a Redis Hash key triggers the execution of a RedisGears function.
 1. That RedisGears function reads the data from the Hash and writes into a Redis Stream.
 1. Another RedisGears function is executed asynchronously in the background and writes the changes to the target database.

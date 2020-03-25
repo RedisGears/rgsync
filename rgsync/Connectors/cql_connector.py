@@ -1,4 +1,4 @@
-from WriteBehind.common import *
+from rgsync.common import *
 from redisgears import getMyHashTag as hashtag
 import json
 
