@@ -1,5 +1,5 @@
 from redisgears import getMyHashTag as hashtag
-from redisgears import log as Log
+from redisgears import log
 
 NAME = 'WRITE_BEHIND'
 ORIGINAL_KEY = '_original_key'
@@ -15,7 +15,7 @@ defaultOperation = OPERATION_UPDATE_REPLICATE
 
 def WriteBehindLog(msg, prefix='%s - ' % NAME, logLevel='notice'):
     msg = prefix + msg
-    Log(logLevel, msg)
+    log(msg, level=logLevel)
 
 def WriteBehindDebug(msg):
     WriteBehindLog(msg, logLevel='debug')
