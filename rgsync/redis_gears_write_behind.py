@@ -392,7 +392,7 @@ class RGWriteBehind(RGWriteBase):
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
-        map(transform)
+        map(transform).\
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
