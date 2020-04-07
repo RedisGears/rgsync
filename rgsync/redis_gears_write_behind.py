@@ -321,7 +321,7 @@ def WriteNoReplicate(r):
     return False
 
 class RGWriteBehind(RGWriteBase):
-    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
+    def __init__(self, GB, keysPrefix, mappings, connector, name, transform=lambda o: o, version=None,
                  onFailedRetryInterval=5, batch=100, duration=100):
         '''
         Register a write behind execution to redis gears
@@ -392,6 +392,7 @@ class RGWriteBehind(RGWriteBase):
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
+        map(transform)
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
