@@ -321,8 +321,8 @@ def WriteNoReplicate(r):
     return False
 
 class RGWriteBehind(RGWriteBase):
-    def __init__(self, GB, keysPrefix, mappings, connector, name, transform=lambda o: o, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100):
+    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, eventTypes=['hset', 'hmset', 'del', 'change']):
         '''
         Register a write behind execution to redis gears
 
@@ -381,6 +381,10 @@ class RGWriteBehind(RGWriteBase):
         duration - interval in ms in which data will be writen to target even if batch size did not reached
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
+
+        transform - A function that accepts as input a redis record and returns a hash
+
+        eventTypes - The events for which to trigger
         '''
 
         RGWriteBase.__init__(self, mappings, connector, name, version)
@@ -397,7 +401,7 @@ class RGWriteBehind(RGWriteBase):
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=['set','hset', 'hmset', 'del', 'change'])
+        register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=eventTypes)
 
         ## create the execution to write each key from stream to DB
         descJson = {
