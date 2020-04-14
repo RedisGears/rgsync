@@ -40,8 +40,8 @@ class SnowflakeSqlConnection(BaseSqlConnection):
         self.account = account
 
     def _getConnectionStr(self):
-        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.username,
-                                                                     password=self.password,
+        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.user,
+                                                                     password=self.passwd,
                                                                      account=self.account,
                                                                      db=self.db)
 
@@ -182,5 +182,5 @@ class OracleSqlConnector(BaseSqlConnector):
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
 
 class SnowflakeSqlConnector(OracleSqlConnector):
-    def __init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName=None):
-        OracleSqlBackend.__init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName)
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        OracleSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
