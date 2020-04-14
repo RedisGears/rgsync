@@ -40,8 +40,8 @@ class SnowflakeSqlConnection(BaseSqlConnection):
         self.account = account
 
     def _getConnectionStr(self):
-        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.username,
-                                                                     password=self.password,
+        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.user,
+                                                                     password=self.passwd,
                                                                      account=self.account,
                                                                      db=self.db)
 
