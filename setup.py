@@ -7,7 +7,7 @@ def read_all(f):
 
 setup(
     name='rgsync',
-    version='0.1',  
+    version='0.1.1',  
     description='RedisGears synchronization recipe',
     long_description=read_all("README.md"),
     long_description_content_type='text/markdown',
