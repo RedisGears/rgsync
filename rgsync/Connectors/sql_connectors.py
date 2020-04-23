@@ -27,7 +27,7 @@ class MySqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
-class SqLiteConnection(BaseSqlConnection):
+class SQLiteConnection(BaseSqlConnection):
     def __init__(self, filePath):
         BaseSqlConnection.__init__(self, None, None, None)
         self.filePath = filePath
@@ -171,7 +171,7 @@ class MySqlConnector(BaseSqlConnector):
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
-class SqLiteConnector(MySqlConnector):
+class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 

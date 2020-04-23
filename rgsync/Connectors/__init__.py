@@ -1,5 +1,5 @@
 from .simple_hash_connector import SimpleHashConnector
-from .sql_connectors import MySqlConnector, SqLiteConnection, OracleSqlConnector,SnowflakeSqlConnector,MySqlConnection,OracleSqlConnection,SnowflakeSqlConnection,SqLiteConnector
+from .sql_connectors import MySqlConnector, SQLiteConnection, OracleSqlConnector,SnowflakeSqlConnector,MySqlConnection,OracleSqlConnection,SnowflakeSqlConnection,SQLiteConnector
 from .cql_connector import CqlConnector, CqlConnection
 
 __all__ = [
