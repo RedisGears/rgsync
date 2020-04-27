@@ -14,11 +14,11 @@ jobs:
           command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; apt-get install -y unzip; unzip redisgears.linux-bionic-x64.master.zip
       - run:
           name: download_RedisGears_deps
-          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz; cd /; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
+          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz; mkdir -p /var/opt/redislabs/modules/rg/; cd /var/opt/redislabs/modules/rg/; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
       - checkout
       - run:
           name: install_write_behind_to_RedisGears_virtual_env
-          command: source /var/opt/redislabs/lib/modules/python3/.venv/bin/activate; python setup.py install
+          command: /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
       - run:
           name: initialize_my_sql
           command: |
