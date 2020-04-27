@@ -18,7 +18,7 @@ jobs:
       - checkout
       - run:
           name: install_write_behind_to_RedisGears_virtual_env
-          command: source /var/opt/redislabs/lib/modules/python3/.venv/bin/activate; python setup.py install
+          command: source /var/opt/redislabs/modules/rg/python3_99.99.99/bin/activate; python setup.py install
       - run:
           name: initialize_my_sql
           command: |
