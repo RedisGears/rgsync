@@ -36,3 +36,18 @@ personsMappings = {
 
 RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+
+'''
+Create MySQL cars connector
+cars - MySQL table to put the data
+car_id - primary key
+'''
+carsConnector = MySqlConnector(connection, 'cars', 'car_id')
+
+carsMappings = {
+	'id':'id',
+	'color':'color'
+}
+
+RGWriteBehind(GB, keysPrefix='car', mappings=carsMappings, connector=carsConnector, name='CarsWriteBehind', version='99.99.99')
