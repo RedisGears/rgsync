@@ -1,6 +1,5 @@
 from redisgears import getMyHashTag as hashtag
 from redisgears import log
-import uuid
 
 NAME = 'WRITE_BEHIND'
 ORIGINAL_KEY = '_original_key'
@@ -14,8 +13,6 @@ OPERATION_UPDATE_NOREPLICATE = '+'
 OPERATIONS = [OPERATION_DEL_REPLICATE, OPERATION_DEL_NOREPLICATE, OPERATION_UPDATE_REPLICATE, OPERATION_UPDATE_NOREPLICATE]
 defaultOperation = OPERATION_UPDATE_REPLICATE
 
-UUID = str(uuid.uuid4())
-
 def WriteBehindLog(msg, prefix='%s - ' % NAME, logLevel='notice'):
     msg = prefix + msg
     log(msg, level=logLevel)
@@ -23,9 +20,10 @@ def WriteBehindLog(msg, prefix='%s - ' % NAME, logLevel='notice'):
 def WriteBehindDebug(msg):
     WriteBehindLog(msg, logLevel='debug')
 
-def GetStreamName(tableName):
-    global UUID
-    return '_%s-stream-%s-{%s}' % (tableName, UUID, hashtag())
+def CreateGetStreamNameCallback(uid):
+    def GetStreamName(tableName):
+        return '_%s-stream-%s-{%s}' % (tableName, uid, hashtag())
+    return GetStreamName
 
 def CompareIds(id1, id2):
     id1_time, id1_num = [int(a) for a in id1.split('-')]
