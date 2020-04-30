@@ -27,6 +27,14 @@ class MySqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
+class SQLiteConnection(BaseSqlConnection):
+    def __init__(self, filePath):
+        BaseSqlConnection.__init__(self, None, None, None)
+        self.filePath = filePath
+
+    def _getConnectionStr(self):
+        return 'sqlite:////{filePath}?check_same_thread=False'.format(filePath=self.filePath)
+
 class OracleSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db):
         BaseSqlConnection.__init__(self, user, passwd, db)
@@ -162,6 +170,10 @@ class MySqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+
+class SQLiteConnector(MySqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 
 class OracleSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
