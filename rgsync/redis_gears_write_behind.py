@@ -394,7 +394,7 @@ class RGWriteBehind(RGWriteBase):
         aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
         foreach(CreateWriteDataFunction(self.connector)).\
         count().\
-        register(prefix='_%s-stream-*' % self.connector.TableName(),
+        register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
                  mode="async_local",
                  batch=batch,
                  duration=duration,
