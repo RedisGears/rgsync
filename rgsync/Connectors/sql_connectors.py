@@ -3,9 +3,21 @@ from redisgears import getMyHashTag as hashtag
 
 class BaseSqlConnection():
     def __init__(self, user, passwd, db):
-        self.user = user
-        self.passwd = passwd
-        self.db = db
+        self._user = user
+        self._passwd = passwd
+        self._db = db
+
+    @property
+    def user(self):
+        return self._user() is callable(self._user) else self._user
+
+    @property
+    def passwd(self):
+        return self._passwd() is callable(self._passwd) else self._passwd
+
+    @property
+    def db(self):
+        return self._db() is callable(self._db) else self._db
 
     def _getConnectionStr(self):
         raise Exception('Can not use BaseSqlConnector _getConnectionStr directly')
@@ -30,7 +42,11 @@ class MySqlConnection(BaseSqlConnection):
 class SQLiteConnection(BaseSqlConnection):
     def __init__(self, filePath):
         BaseSqlConnection.__init__(self, None, None, None)
-        self.filePath = filePath
+        self._filePath = filePath
+
+    @property
+    def filePath(self):
+        return self._filePath() is callable(self._filePath) else self._filePath
 
     def _getConnectionStr(self):
         return 'sqlite:////{filePath}?check_same_thread=False'.format(filePath=self.filePath)
@@ -45,7 +61,11 @@ class OracleSqlConnection(BaseSqlConnection):
 class SnowflakeSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db, account):
         BaseSqlConnection.__init__(self, user, passwd, db)
-        self.account = account
+        self._account = account
+
+    @property
+    def account(self):
+        return self._account() is callable(self._account) else self._account
 
     def _getConnectionStr(self):
         return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.user,
