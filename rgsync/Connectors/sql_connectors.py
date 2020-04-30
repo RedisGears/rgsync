@@ -9,15 +9,15 @@ class BaseSqlConnection():
 
     @property
     def user(self):
-        return self._user() is callable(self._user) else self._user
+        return self._user() if callable(self._user) else self._user
 
     @property
     def passwd(self):
-        return self._passwd() is callable(self._passwd) else self._passwd
+        return self._passwd() if callable(self._passwd) else self._passwd
 
     @property
     def db(self):
-        return self._db() is callable(self._db) else self._db
+        return self._db() if callable(self._db) else self._db
 
     def _getConnectionStr(self):
         raise Exception('Can not use BaseSqlConnector _getConnectionStr directly')
@@ -46,7 +46,7 @@ class SQLiteConnection(BaseSqlConnection):
 
     @property
     def filePath(self):
-        return self._filePath() is callable(self._filePath) else self._filePath
+        return self._filePath() if callable(self._filePath) else self._filePath
 
     def _getConnectionStr(self):
         return 'sqlite:////{filePath}?check_same_thread=False'.format(filePath=self.filePath)
@@ -65,7 +65,7 @@ class SnowflakeSqlConnection(BaseSqlConnection):
 
     @property
     def account(self):
-        return self._account() is callable(self._account) else self._account
+        return self._account() if callable(self._account) else self._account
 
     def _getConnectionStr(self):
         return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.user,
