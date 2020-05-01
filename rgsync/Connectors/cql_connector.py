@@ -14,8 +14,8 @@ class CqlConnection():
         return self._user() if callable(self._user) else self._user
 
     @property
-    def passwd(self):
-        return self._passwd() if callable(self._passwd) else self._passwd
+    def password(self):
+        return self._password() if callable(self._password) else self._password
 
     @property
     def db(self):
