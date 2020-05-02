@@ -20,8 +20,10 @@ def WriteBehindLog(msg, prefix='%s - ' % NAME, logLevel='notice'):
 def WriteBehindDebug(msg):
     WriteBehindLog(msg, logLevel='debug')
 
-def GetStreamName(tableName):
-    return '_%s-stream-{%s}' % (tableName, hashtag())
+def CreateGetStreamNameCallback(uid):
+    def GetStreamName(tableName):
+        return '_%s-stream-%s-{%s}' % (tableName, uid, hashtag())
+    return GetStreamName
 
 def CompareIds(id1, id2):
     id1_time, id1_num = [int(a) for a in id1.split('-')]

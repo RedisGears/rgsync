@@ -3,6 +3,21 @@ from rgsync.Connectors import MySqlConnector, MySqlConnection
 
 '''
 Create MySQL connection object
+All the arguments to the connection can alse be callbacks which will be read each time 
+a reconnect attemp is performed. Example:
+Read from RedisGears configuration using configGet (https://oss.redislabs.com/redisgears/master/runtime.html#configget) function
+
+def User():
+	return configGet('MySqlUser')
+
+def Password():
+	return configGet('MySqlPassword')
+
+def DB():
+	return configGet('MySqlDB')
+
+connection = MySqlConnection(User, Password, DB)
+
 '''
 connection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
 

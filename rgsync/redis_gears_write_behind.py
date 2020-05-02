@@ -1,6 +1,7 @@
 from redisgears import executeCommand as execute
 from rgsync.common import *
 import json
+import uuid
 
 ackExpireSeconds = 3600
 
@@ -176,7 +177,7 @@ def CreateAddToStreamFunction(self):
                         WriteBehindLog(msg)
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
-        execute('xadd', GetStreamName(self.connector.TableName()), '*', *sum(data, []))
+        execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
 def CreateWriteDataFunction(connector):
@@ -368,6 +369,8 @@ class RGWriteBehind(RGWriteBase):
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
         '''
+        UUID = str(uuid.uuid4())
+        self.GetStreamName = CreateGetStreamNameCallback(UUID)
 
         RGWriteBase.__init__(self, mappings, connector, name, version)
 
@@ -394,7 +397,7 @@ class RGWriteBehind(RGWriteBase):
         aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
         foreach(CreateWriteDataFunction(self.connector)).\
         count().\
-        register(prefix='_%s-stream-*' % self.connector.TableName(),
+        register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
                  mode="async_local",
                  batch=batch,
                  duration=duration,
