@@ -3,8 +3,8 @@ from rgsync.Connectors import MySqlConnector, MySqlConnection
 
 '''
 Create MySQL connection object
-All the arguments to the connection can alse be callbacks which will be read each time 
-a reconnect attemp is performed. Example:
+All the arguments to the connection can also be callbacks which will be called each time a reconnect attempt is performed. 
+Example:
 Read from RedisGears configuration using configGet (https://oss.redislabs.com/redisgears/master/runtime.html#configget) function
 
 def User():
