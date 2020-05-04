@@ -17,7 +17,6 @@ def SafeDeleteKey(key):
         pass
 
 def ValidateHash(r):
-    WriteBehindLog("VH %s " % r)
     key = r['key']
     value = r['value'] if 'value' in r.keys() else {}
 
@@ -59,14 +58,12 @@ def ValidateHash(r):
     return True
 
 def DeleteHashIfNeeded(r):
-    WriteBehindLog("DH %s " % r)
     key = r['key']
     operation = r['value'][OP_KEY]
     if operation == OPERATION_DEL_REPLICATE:
         SafeDeleteKey(key)
 
 def ShouldProcessHash(r):
-    WriteBehindLog("SPH %s " % r)
     key = r['key']
     value = r['value']
     uuid = value[UUID_KEY]
@@ -158,7 +155,6 @@ def UnregisterOldVersions(name, version):
 
 def CreateAddToStreamFunction(self):
     def func(r):
-        WriteBehindLog("CATSF %s " % r)
         data = []
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
@@ -184,7 +180,6 @@ def CreateAddToStreamFunction(self):
 
 def CreateWriteDataFunction(connector):
     def func(data):
-        WriteBehindLog("CWDF %s " % data)
         idsToAck = []
         for d in data:
             originalKey = d.pop(ORIGINAL_KEY, None)
@@ -202,7 +197,6 @@ def CreateWriteDataFunction(connector):
 
 class RGWriteBase():
     def __init__(self, mappings, connector, name, version=None):
-
         UnregisterOldVersions(name, version)
 
         self.connector = connector
@@ -214,16 +208,12 @@ class RGWriteBase():
             WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
 
 def DeleteKeyIfNeeded(r):
-    WriteBehindLog("DK %s " % r)
-    
     if r['value'][OP_KEY] == OPERATION_DEL_REPLICATE:
         # we need to just delete the key but delete it directly will cause
         # key unwanted key space notification so we need to rename it first
         SafeDeleteKey(r['key'])
 
 def PrepareRecord(r):
-    WriteBehindLog("PR %s " % r)
-
     key = r['key']
     value = r['value']
 
@@ -242,8 +232,6 @@ def PrepareRecord(r):
 def TryWriteToTarget(self):
     func = CreateWriteDataFunction(self.connector)
     def f(r):
-        WriteBehindLog("TWTT %s " % r)
-
         key = r['key']
         value = r['value']
         keys = value.keys()
@@ -277,8 +265,6 @@ def TryWriteToTarget(self):
     return f
 
 def UpdateHash(r):
-    WriteBehindLog("UH %s " % r)
-
     key = r['key']
     value = r['value']
     operation = value.pop(OP_KEY, None)
@@ -301,8 +287,6 @@ def UpdateHash(r):
         raise Exception(msg)
 
 def WriteNoReplicate(r):
-    WriteBehindLog("WNR %s " % r)
-
     if ShouldProcessHash(r):
         # return true means hash should be replicate and we need to
         # continue processing it
