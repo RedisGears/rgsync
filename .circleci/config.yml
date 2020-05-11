@@ -1,5 +1,5 @@
 jobs:
-  ubuntu:
+  build_and_test:
     docker:
       - image: 'ubuntu:bionic'
     steps:
@@ -8,7 +8,7 @@ jobs:
           command: apt-get -qq update; apt-get install -y mysql-server ca-certificates wget build-essential git python-pip
       - run:
           name: Redis_5_upgrade
-          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 5.0.7; make; make install
+          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 6.0.1; make; make install
       - run:
           name: download_RedisGears
           command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; apt-get install -y unzip; unzip redisgears.linux-bionic-x64.master.zip
@@ -38,12 +38,16 @@ jobs:
 
 workflows:
   version: 2
-
-  default_flow:
+  commit:
     jobs:
-      - ubuntu:
+      - build_and_test
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
           filters:
             branches:
-              only: /.*/
-            tags:
-              only: /.*/
+              only:
+                - master
+    jobs:
+      - build_and_test
