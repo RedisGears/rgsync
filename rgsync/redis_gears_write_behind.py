@@ -199,7 +199,6 @@ def CreateWriteDataFunction(connector):
 
 class RGWriteBase():
     def __init__(self, mappings, connector, name, version=None):
-
         UnregisterOldVersions(name, version)
 
         self.connector = connector
@@ -309,7 +308,7 @@ def WriteNoReplicate(r):
 
 class RGWriteBehind(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100):
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, eventTypes=['hset', 'hmset', 'del', 'change']):
         '''
         Register a write behind execution to redis gears
 
@@ -368,6 +367,10 @@ class RGWriteBehind(RGWriteBase):
         duration - interval in ms in which data will be writen to target even if batch size did not reached
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
+        
+        transform - A function that accepts as input a redis record and returns a hash
+
+        eventTypes - The events for which to trigger
         '''
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
@@ -381,11 +384,12 @@ class RGWriteBehind(RGWriteBase):
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
+        map(transform).\
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=['hset', 'hmset', 'del', 'change'])
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
 
         ## create the execution to write each key from stream to DB
         descJson = {
