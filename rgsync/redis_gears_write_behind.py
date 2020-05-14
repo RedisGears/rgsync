@@ -308,7 +308,7 @@ def WriteNoReplicate(r):
 
 class RGWriteBehind(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100, eventTypes=['hset', 'hmset', 'del', 'change']):
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, eventTypes=['hset', 'hmset', 'del', 'change']):
         '''
         Register a write behind execution to redis gears
 
@@ -316,7 +316,7 @@ class RGWriteBehind(RGWriteBase):
 
         keysPrefix - Prefix on keys to register on
 
-        mappings - a dictionary or a function that returns a dictionary in the following format
+        mappings - a dictionary in the following format
             {
                 'name-on-redis-hash1':'name-on-connector-table1',
                 'name-on-redis-hash2':'name-on-connector-table2',
@@ -367,6 +367,8 @@ class RGWriteBehind(RGWriteBase):
         duration - interval in ms in which data will be writen to target even if batch size did not reached
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
+        
+        transform - A function that accepts as input a redis record and returns a hash
 
         eventTypes - The events for which to trigger
         '''
@@ -382,7 +384,7 @@ class RGWriteBehind(RGWriteBase):
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
-        map(lambda input: mappings(input) if callable(mappings) else input).\
+        map(transform).\
         filter(ValidateHash).\
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
