@@ -389,7 +389,7 @@ class RGWriteBehind(RGWriteBase):
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', regex='%s:*' % keysPrefix, eventTypes=eventTypes)
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
 
         ## create the execution to write each key from stream to DB
         descJson = {
