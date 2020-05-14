@@ -104,13 +104,13 @@ class CqlConnector:
         try:
             from cassandra.cluster import BatchStatement
             batch = BatchStatement()
-            # we have only key name, original_key, streamId, it means that the key was deleted
-            isAddBatch = True if data[0][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
+            isAddBatch = True if data[0]['value'][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
             query = self.addQuery if isAddBatch else self.delQuery
             stmt = self.session.prepare(query)
             lastStreamId = None
-            for x in data:
-                lastStreamId = x.pop('streamId', None) # pop the stream id out of the record, we do not need it
+            for d in data:
+                x = d['value']
+                lastStreamId = d.pop('id', None) # pop the stream id out of the record, we do not need it
                 if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
                     WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
                     continue
@@ -122,7 +122,7 @@ class CqlConnector:
                     raise Exception(msg) from None
 
                 self.shouldCompareId = False
-                if op != OPERATION_UPDATE_REPLICATE: # we have only key name, it means that the key was deleted
+                if op != OPERATION_UPDATE_REPLICATE:
                     if isAddBatch:
                         self.session.execute(batch)
                         batch = BatchStatement()

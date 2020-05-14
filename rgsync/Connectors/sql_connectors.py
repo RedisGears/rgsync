@@ -3,9 +3,21 @@ from redisgears import getMyHashTag as hashtag
 
 class BaseSqlConnection():
     def __init__(self, user, passwd, db):
-        self.user = user
-        self.passwd = passwd
-        self.db = db
+        self._user = user
+        self._passwd = passwd
+        self._db = db
+
+    @property
+    def user(self):
+        return self._user() if callable(self._user) else self._user
+
+    @property
+    def passwd(self):
+        return self._passwd() if callable(self._passwd) else self._passwd
+
+    @property
+    def db(self):
+        return self._db() if callable(self._db) else self._db
 
     def _getConnectionStr(self):
         raise Exception('Can not use BaseSqlConnector _getConnectionStr directly')
@@ -27,6 +39,18 @@ class MySqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
+class SQLiteConnection(BaseSqlConnection):
+    def __init__(self, filePath):
+        BaseSqlConnection.__init__(self, None, None, None)
+        self._filePath = filePath
+
+    @property
+    def filePath(self):
+        return self._filePath() if callable(self._filePath) else self._filePath
+
+    def _getConnectionStr(self):
+        return 'sqlite:////{filePath}?check_same_thread=False'.format(filePath=self.filePath)
+
 class OracleSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db):
         BaseSqlConnection.__init__(self, user, passwd, db)
@@ -37,11 +61,15 @@ class OracleSqlConnection(BaseSqlConnection):
 class SnowflakeSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db, account):
         BaseSqlConnection.__init__(self, user, passwd, db)
-        self.account = account
+        self._account = account
+
+    @property
+    def account(self):
+        return self._account() if callable(self._account) else self._account
 
     def _getConnectionStr(self):
-        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.username,
-                                                                     password=self.password,
+        return 'snowflake://{user}:{password}@{account}/{db}'.format(user=self.user,
+                                                                     password=self.passwd,
                                                                      account=self.account,
                                                                      db=self.db)
 
@@ -98,12 +126,12 @@ class BaseSqlConnector():
         trans = self.conn.begin()
         try:
             batch = []
-            # we have only key name, original_key, streamId, it means that the key was deleted
-            isAddBatch = True if data[0][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
+            isAddBatch = True if data[0]['value'][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
             query = self.addQuery if isAddBatch else self.delQuery
             lastStreamId = None
-            for x in data:
-                lastStreamId = x.pop('streamId', None)## pop the stream id out of the record, we do not need it.
+            for d in data:
+                x = d['value']
+                lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
                 if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
                     WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
                     continue
@@ -163,6 +191,10 @@ class MySqlConnector(BaseSqlConnector):
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
+class SQLiteConnector(MySqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
 class OracleSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -182,5 +214,5 @@ class OracleSqlConnector(BaseSqlConnector):
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
 
 class SnowflakeSqlConnector(OracleSqlConnector):
-    def __init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName=None):
-        OracleSqlBackend.__init__(self, OracleSqlConnector, tableName, pk, exactlyOnceTableName)
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        OracleSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)

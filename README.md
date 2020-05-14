@@ -1,4 +1,12 @@
+[![license](https://img.shields.io/github/license/RedisGears/rgsync.svg)](https://github.com/RedisGears/rgsync)
+[![CircleCI](https://circleci.com/gh/RedisGears/rgsync/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGears/rgsync/tree/master)
+[![PyPI version](https://badge.fury.io/py/rgsync.svg)](https://badge.fury.io/py/rgsync)
+[![Known Vulnerabilities](https://snyk.io/test/github/RedisGears/rgsync/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/RedisGears/rgsync?targetFile=requirements.txt)
+
 # RGSync
+[![Forum](https://img.shields.io/badge/Forum-RedisGears-blue)](https://forum.redislabs.com/c/modules/redisgears)
+[![Gitter](https://badges.gitter.im/RedisLabs/RedisGears.svg)](https://gitter.im/RedisLabs/RedisGears?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 A _Write Behind_ and _Write Through_ Recipe for [RedisGears](https://github.com/RedisGears/RedisGears)
 
 ## Demo
@@ -47,10 +55,10 @@ RGWriteBehind(GB, keysPrefix='cars', mappings=carsMappings, connector=carsConnec
 ```
 
 ## Running the recipe
-You can use [this utility](https://github.com/RedisGears/RedisGears/blob/master/recipes/gears.py) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](example.py) and install its dependencies with the following command:
+You can use [this utility](https://github.com/RedisGears/gears-cli) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](example.py) and install its dependencies with the following command:
 
 ```bash
-python gears.py --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/rgsync.git PyMySQL
+gears-cli --host <host> --port <post> --password <password> example.py REQUIREMENTS git+https://github.com/RedisGears/rgsync.git PyMySQL
 ```
 
 ## Overview of the recipe's operation

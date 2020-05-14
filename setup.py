@@ -5,9 +5,11 @@ def read_all(f):
     with io.open(f, encoding="utf-8") as I:
         return I.read()
 
+requirements = list(map(str.strip, open("requirements.txt").readlines()))    
+    
 setup(
     name='rgsync',
-    version='0.1.1',  
+    version='0.2.0',  
     description='RedisGears synchronization recipe',
     long_description=read_all("README.md"),
     long_description_content_type='text/markdown',
@@ -25,7 +27,5 @@ setup(
     author_email='oss@redislabs.com',
     url='https://github.com/RedisGears/rgsync/',  
     packages=find_packages(),
-    install_requires=[
-    	'SQLAlchemy',
-    ]
+    install_requires=requirements
 )
