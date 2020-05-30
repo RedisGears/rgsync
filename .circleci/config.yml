@@ -58,6 +58,7 @@ jobs:
     parameters:
       platform:
         type: string
+    steps:
       - checkout
       - setup-docker
       - setup-readies
