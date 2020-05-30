@@ -1,4 +1,6 @@
-jobs:
+version: 2.1
+
+commands: 
   setup-readies:
     steps:
       - run:
@@ -32,6 +34,25 @@ jobs:
             bash <(curl -fsSL https://get.docker.com)
       - setup_remote_docker
 
+  platform-build-steps:
+    parameters:
+      platform:
+        type: string
+    steps:
+      - checkout
+      - setup-docker
+      - setup-readies
+      - run:
+          name: Build for platform
+          command: |
+            cd build/reqpacks
+            OSNICK=<<parameters.platform>> ./build-pyreqs
+      - persist_to_workspace:
+          root: bin/artifacts
+          paths:
+            - '*.zip'
+
+jobs:
   build_and_test:
     docker:
       - image: 'ubuntu:bionic'
@@ -54,24 +75,16 @@ jobs:
           name: Tests
           command: python3 -m RLTest --module ../redisgears.so
 
-  platform-build-steps:
+  platform-build:
     parameters:
       platform:
         type: string
+    docker:
+      - image: 'debian:buster'
     steps:
-      - checkout
-      - setup-docker
-      - setup-readies
-      - run:
-          name: Build for platform
-          command: |
-            cd build/reqpacks
-            OSNICK=<<parameters.platform>> ./build-pyreqs
-      - persist_to_workspace:
-          root: bin/artifacts
-          paths:
-            - '*.zip'
-
+      - platform-build-steps:
+          platform: <<parameters.platform>>
+ 
   deploy-artifcts:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
