@@ -18,6 +18,9 @@ rm -f $cid
 docker run -d --cidfile $cid -p 6379:6379 rgsync-reqpacks:${GEARS_VERSION}-${ARCH}-${OSNICK}
 sleep 2
 
+did=`cat $cid`
+REDIS_HOST=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $did`
+
 if [[ `$ROOT/deps/readies/bin/platform --redhat?; echo $?` == 0 ]]; then
 	export LC_ALL=en_US.UTF-8
 	export LANG=en_US.UTF-8
