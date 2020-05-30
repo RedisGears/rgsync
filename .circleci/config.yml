@@ -1,46 +1,137 @@
 jobs:
+  setup-readies:
+    steps:
+      - run:
+          name: Setup Readies
+          command: |
+            mkdir -p deps
+            (cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            ./deps/readies/bin/getpy3
+            ./sbin/system-setup.py
+
+  setup-gears:
+    steps:
+      - run:
+          name: Setup Readies
+          command: |
+            cd ..
+            wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip
+            unzip redisgears.linux-bionic-x64.master.zip
+            wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz
+            mkdir -p /var/opt/redislabs/modules/rg
+            cd /var/opt/redislabs/modules/rg
+            tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
+
+  setup-docker:
+    steps:
+      - run:
+          name: Setup executor
+          command: |
+            apt-get -qq update
+            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+            bash <(curl -fsSL https://get.docker.com)
+      - setup_remote_docker
+
   build_and_test:
     docker:
       - image: 'ubuntu:bionic'
     steps:
-      - run:
-          name: installations
-          command: apt-get -qq update; apt-get install -y mysql-server ca-certificates wget build-essential git python-pip
-      - run:
-          name: Redis_5_upgrade
-          command: cd ..; git clone https://github.com/antirez/redis.git; cd ./redis; git fetch; git checkout 6.0.1; make; make install
-      - run:
-          name: download_RedisGears
-          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip; apt-get install -y unzip; unzip redisgears.linux-bionic-x64.master.zip
-      - run:
-          name: download_RedisGears_deps
-          command: cd ..; wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz; mkdir -p /var/opt/redislabs/modules/rg/; cd /var/opt/redislabs/modules/rg/; tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
       - checkout
+      - setup-readies
       - run:
-          name: install_write_behind_to_RedisGears_virtual_env
-          command: /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
+          name: Setup Redis
+          command: ./deps/readies/bin/getredis --version 6
+      - setup-gears
       - run:
-          name: initialize_my_sql
+          name: Setup MySQL
           command: |
             service mysql start
-            mysql -u root --execute "CREATE DATABASE test"
-            mysql -u root --execute "CREATE TABLE test.persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));"
-            mysql -u root --execute "INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('demouser','localhost',PASSWORD('Password123!'),'','','');"
-            mysql -u root --execute "FLUSH PRIVILEGES;"
-            mysql -u root --execute "GRANT ALL PRIVILEGES ON test.* to demouser@localhost;"
-            mysql -u root --execute "FLUSH PRIVILEGES;"
+            ./sbin/setup-mysql
       - run:
-          name: install RLTest
-          command: pip install git+https://github.com/Grokzen/redis-py-cluster.git@master git+https://github.com/RedisLabsModules/RLTest.git sqlalchemy PyMySQL
+          name: Install rgsync
+          command: /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
       - run:
-          name: run_tests
-          command: RLTest --module ../redisgears.so
+          name: Tests
+          command: python3 -m RLTest --module ../redisgears.so
+
+  platform-build-steps:
+    parameters:
+      platform:
+        type: string
+      - checkout
+      - setup-docker
+      - setup-readies
+      - run:
+          name: Build for platform
+          command: |
+            cd build/reqpacks
+            OSNICK=<<parameters.platform>> ./build-pyreqs
+      - persist_to_workspace:
+          root: bin/artifacts
+          paths:
+            - '*.zip'
+
+  deploy-artifcts:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
+    steps:
+      - attach_workspace:
+          at: bin/artifacts
+      - run:
+          name: Deploy Releases to S3
+          command: |
+            for f in bin/artifacts/*.zip; do
+              aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
+            done
+
+platform-builds-requires: &platform-builds-requires
+  requires:
+    - build-centos7
+    - build-bionic
+    - build-xenial
+
+platform-builds-flow-defs: &platform-builds-flow-defs
+#  requires:
+#    - build_and_test
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
+#    branches:
+#      only:
+#        - master
+#    tags:
+#      only: /^v[0-9].*/
 
 workflows:
   version: 2
   commit:
     jobs:
-      - build_and_test
+      # - build_and_test
+      - platform-build:
+          name: build-bionic
+          platform: bionic
+          <<: *platform-builds-flow-defs
+#      - platform-build:
+#          name: build-centos7
+#          platform: centos7
+#          <<: *platform-builds-flow-defs
+#      - platform-build:
+#          name: build-xenial
+#          platform: xenial
+#          <<: *platform-builds-flow-defs
+      - deploy-artifacts:
+          <<: *platform-builds-requires
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
+#            branches:
+#              only: master
+#            tags:
+#              only: /^v[0-9].*/
   nightly:
     triggers:
       - schedule:

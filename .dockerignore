@@ -1,0 +1,6 @@
+/bin/
+/[0-9]*/
+/venv*/
+/artifacts/
+/pytest/logs/
+/VARIANT
