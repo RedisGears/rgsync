@@ -85,7 +85,7 @@ jobs:
       - platform-build-steps:
           platform: <<parameters.platform>>
  
-  deploy-artifcts:
+  deploy-artifacts:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
     steps:
