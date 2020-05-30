@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -xe
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+ROOT=$(realpath $HERE/../..)
+
+. $HERE/env
+[[ -z $RGSYNC_VERSION ]] && { echo "RGSYNC_VERSION is not defined. Aborting"; exit 1; }
+PLATFORM=`$ROOT/deps/readies/bin/platform -t`
+
+if [[ `$ROOT/deps/readies/bin/platform --redhat?; echo $?` == 0 ]]; then
+	export LC_ALL=en_US.UTF-8
+	export LANG=en_US.UTF-8
+else
+	export LC_ALL=C.UTF-8
+	export LANG=C.UTF-8
+fi
+
+touch $HERE/none.py
+python3 -m gears_cli run --requirements $HERE/requirements.final $HERE/none.py
+
+REQS_PATH=$ROOT/bin/artifacts/reqs
+rm -rf $REQS_PATH
+mkdir -p $REQS_PATH
+DONE=false
+until $DONE; do
+	read || DONE=true
+	if [[ ! -z $REPLY ]]; then
+		 python3 -m gears_cli export-requirement --save-directory $REQS_PATH $REPLY
+	fi
+done < $HERE/requirements.final
+
+cd $REQS_PATH
+zip $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip *.zip
+cd ..
+rm -rf $REQS_PATH
+
+echo $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip

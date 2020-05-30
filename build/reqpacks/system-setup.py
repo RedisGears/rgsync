@@ -19,7 +19,8 @@ class ReqPacksSetup(paella.Setup):
         self.setup_pip()
         self.pip3_install("wheel virtualenv")
         self.pip3_install("setuptools --upgrade")
-        
+
+        self.pip3_install("-r deps/readies/paella/requirements.txt")
         self.install("git zip unzip")
 
     def debian_compat(self):
@@ -28,6 +29,10 @@ class ReqPacksSetup(paella.Setup):
         self.install("libsqlite3-dev")
 
     def redhat_compat(self):
+        # enable en_US.utf8 locale
+        self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
+        self.run("yum reinstall glibc-common")
+        
         self.group_install("'Development Tools'")
         self.install("redhat-lsb-core")
         self.install("libsqlite3x-devel")
@@ -43,7 +48,7 @@ class ReqPacksSetup(paella.Setup):
         self.install_gnu_utils()
 
     def common_last(self):
-        pass
+        self.pip3_install("git+https://github.com/RedisGears/gears-cli.git@requirement_import_export")
 
 #----------------------------------------------------------------------------------------------
 

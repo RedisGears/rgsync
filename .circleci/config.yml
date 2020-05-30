@@ -14,7 +14,7 @@ commands:
   setup-gears:
     steps:
       - run:
-          name: Setup Readies
+          name: Setup Gears
           command: |
             cd ..
             wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip
@@ -46,7 +46,7 @@ commands:
           name: Build for platform
           command: |
             cd build/reqpacks
-            OSNICK=<<parameters.platform>> ./build-pyreqs
+            GEARS_VERSION=master OSNICK=<<parameters.platform>> ./build1
       - persist_to_workspace:
           root: bin/artifacts
           paths:

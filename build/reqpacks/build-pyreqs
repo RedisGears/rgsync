@@ -49,7 +49,7 @@ DONE=false
 until $DONE; do
 	read || DONE=true
 	if [[ ! -z $REPLY ]]; then
-		 python3 -m gears_cli export-requirement --host $REDIS_HOST --save-directory $REQS_PATH $req
+		 python3 -m gears_cli export-requirement --host $REDIS_HOST --save-directory $REQS_PATH $REPLY
 	fi
 done < /tmp/requirements.txt
 
