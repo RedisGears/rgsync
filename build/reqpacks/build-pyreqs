@@ -16,10 +16,7 @@ docker build -t rgsync-reqpacks:${GEARS_VERSION}-${ARCH}-${OSNICK} -f build/reqp
 cid=$(mktemp /tmp/gears.cid.XXXXXX)
 rm -f $cid
 docker run -d --cidfile $cid -p 6379:6379 rgsync-reqpacks:${GEARS_VERSION}-${ARCH}-${OSNICK}
-
-while [[ $($ROOT/deps/readies/bin/redis-cmd -- ping) != PONG ]]; do
-	sleep 1
-done
+sleep 2
 
 if [[ `$ROOT/deps/readies/bin/platform --redhat?; echo $?` == 0 ]]; then
 	export LC_ALL=en_US.UTF-8
@@ -43,14 +40,20 @@ touch $HERE/none.py
 python3 -m gears_cli run --host $REDIS_HOST --requirements /tmp/requirements.txt $HERE/none.py
 
 REQS_PATH=$ROOT/bin/artifacts/reqs
+rm -rf $REQS_PATH
 mkdir -p $REQS_PATH
-for req in $REQS; do
-	python3 -m gears_cli export-requirement --host $REDIS_HOST --save-directory $REQS_PATH $req
-done
+DONE=false
+until $DONE; do
+	read || DONE=true
+	if [[ ! -z $REPLY ]]; then
+		 python3 -m gears_cli export-requirement --host $REDIS_HOST --save-directory $REQS_PATH $req
+	fi
+done < /tmp/requirements.txt
 
 cd $REQS_PATH
-tri=`$ROOT/deps/readies/bin/platform -t`
 zip $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.linux-${OSNICK}-${ARCH}.zip *.zip
+cd ..
+rm -rf $REQS_PATH
 
 docker stop `cat $cid`
 rm -f $cid
