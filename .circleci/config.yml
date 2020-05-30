@@ -100,9 +100,9 @@ jobs:
 
 platform-builds-requires: &platform-builds-requires
   requires:
-    - build-centos7
+#    - build-centos7
     - build-bionic
-    - build-xenial
+#    - build-xenial
 
 platform-builds-flow-defs: &platform-builds-flow-defs
 #  requires:
