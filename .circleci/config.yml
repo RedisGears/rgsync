@@ -89,19 +89,19 @@ jobs:
  
   deploy-artifacts:
     docker:
-      # - image: 'cimg/base:2020.01'
-      - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
+      - image: 'cimg/base:2020.01'
+      # - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
     steps:
       - attach_workspace:
           at: bin/artifacts
-      #- run:
-      #    name: Setup
-      #    command: sudo apt-get update && sudo apt-get install -y awscli
+      - run:
+          name: Setup
+          command: sudo apt-get update && sudo apt-get install -y awscli
       - run:
           name: Deploy Releases to S3
           command: |
             for f in bin/artifacts/*.zip; do
-              aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
+              sudo -E aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
             done
 
 platform-builds-requires: &platform-builds-requires
