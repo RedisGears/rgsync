@@ -25,6 +25,7 @@ class RGSyncSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("python3-psutil")
+        self.install("mysql-server")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
