@@ -58,6 +58,7 @@ jobs:
     docker:
       - image: 'ubuntu:bionic'
     steps:
+      - setup-executor
       - checkout
       - setup-automation
       - run:
