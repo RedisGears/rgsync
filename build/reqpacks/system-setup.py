@@ -48,7 +48,7 @@ class ReqPacksSetup(paella.Setup):
         self.install_gnu_utils()
 
     def common_last(self):
-        self.pip3_install("git+https://github.com/RedisGears/gears-cli.git@requirement_import_export")
+        self.pip3_install("git+https://github.com/RedisGears/gears-cli.git")
 
 #----------------------------------------------------------------------------------------------
 

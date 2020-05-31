@@ -47,7 +47,7 @@ commands:
           name: Build for platform
           command: |
             cd build/reqpacks
-            GEARS_VERSION=master OSNICK=<<parameters.platform>> ./build1
+            GEARS_VERSION=master OSNICK=<<parameters.platform>> ./build
       - persist_to_workspace:
           root: bin/artifacts
           paths:
