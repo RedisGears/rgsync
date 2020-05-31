@@ -90,7 +90,6 @@ jobs:
   deploy-artifacts:
     docker:
       - image: 'cimg/base:2020.01'
-      # - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
     steps:
       - attach_workspace:
           at: bin/artifacts
@@ -100,8 +99,16 @@ jobs:
       - run:
           name: Deploy Releases to S3
           command: |
+            trim() {
+              local s2 s="$*"
+              until s2="${s#[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
+              until s2="${s%[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
+              echo "$s"
+            }
+            export AWS_ACCESS_KEY_ID=$(trim "$AWS_ACCESS_KEY_ID")
+            export AWS_SECRET_ACCESS_KEY=$(trim "$AWS_SECRET_ACCESS_KEY")
             for f in bin/artifacts/*.zip; do
-              sudo -E aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
+              aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
             done
 
 platform-builds-requires: &platform-builds-requires
