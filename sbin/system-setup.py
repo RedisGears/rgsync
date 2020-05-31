@@ -20,7 +20,7 @@ class RGSyncSetup(paella.Setup):
         self.pip3_install("wheel virtualenv")
         self.pip3_install("setuptools --upgrade")
         
-        self.pip3_install(f"-r {ROOT}/deps/readies/paella/requirements.txt")
+        self.pip3_install("-r %s/deps/readies/paella/requirements.txt" % ROOT)
         self.install("git zip unzip")
 
     def debian_compat(self):
@@ -45,7 +45,7 @@ class RGSyncSetup(paella.Setup):
         self.pip3_install("--no-cache-dir git+https://github.com/Grokzen/redis-py-cluster.git@master")
         self.pip3_install("--no-cache-dir git+https://github.com/RedisLabsModules/RLTest.git@master")
         self.pip3_install("git+https://github.com/RedisGears/gears-cli.git")
-        self.pip3_install(f"-r {ROOT}/requirements.txt")
+        self.pip3_install("-r %s/requirements.txt" % ROOT)
         self.pip3_install("PyMySQL")
 
 #----------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ class ReqPacksSetup(paella.Setup):
         self.pip3_install("wheel virtualenv")
         self.pip3_install("setuptools --upgrade")
 
-        self.pip3_install(f"-r {ROOT}/deps/readies/paella/requirements.txt")
+        self.pip3_install("-r %s/deps/readies/paella/requirements.txt" % ROOT)
         self.install("git zip unzip")
 
     def debian_compat(self):
