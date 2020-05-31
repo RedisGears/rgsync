@@ -31,7 +31,7 @@ class RGSyncSetup(paella.Setup):
 
         # enable en_US.utf8 locale
         self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
-        self.run("yum reinstall glibc-common")
+        self.run("yum reinstall -y glibc-common")
 
     def fedora(self):
         pass

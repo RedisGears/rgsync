@@ -31,7 +31,7 @@ class ReqPacksSetup(paella.Setup):
     def redhat_compat(self):
         # enable en_US.utf8 locale
         self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
-        self.run("yum reinstall glibc-common")
+        self.run("yum reinstall -y glibc-common")
         
         self.group_install("'Development Tools'")
         self.install("redhat-lsb-core")
