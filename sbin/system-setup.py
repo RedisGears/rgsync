@@ -45,6 +45,7 @@ class RGSyncSetup(paella.Setup):
         self.pip3_install("--no-cache-dir git+https://github.com/RedisLabsModules/RLTest.git@master")
         self.pip3_install("git+https://github.com/RedisGears/gears-cli.git")
         self.pip3_install(f"-r {ROOT}/requirements.txt")
+        self.pip3_install("PyMySQL")
 
 #----------------------------------------------------------------------------------------------
 
