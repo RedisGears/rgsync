@@ -2,10 +2,10 @@
 
 import sys
 import os
-from subprocess import Popen, PIPE
 import argparse
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../deps/readies"))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, ROOT, "deps/readies")
 import paella
 
 #----------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class ReqPacksSetup(paella.Setup):
         self.pip3_install("wheel virtualenv")
         self.pip3_install("setuptools --upgrade")
 
-        self.pip3_install("-r deps/readies/paella/requirements.txt")
+        self.pip3_install(f"-r {ROOT}/deps/readies/paella/requirements.txt")
         self.install("git zip unzip")
 
     def debian_compat(self):
@@ -29,7 +29,7 @@ class ReqPacksSetup(paella.Setup):
         self.install("libsqlite3-dev")
 
     def redhat_compat(self):
-        # enable en_US.utf8 locale
+        # enable utf8 locale
         self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
         self.run("yum reinstall -y glibc-common")
         
@@ -41,10 +41,8 @@ class ReqPacksSetup(paella.Setup):
         self.group_install("'Development Tools'")
 
     def macosx(self):
-        p = Popen('xcode-select -p', stdout=PIPE, close_fds=True, shell=True)
-        out, _ = p.communicate()
-        if out.splitlines() == []:
-            fatal("Xcode tools are not installed. Please run xcode-select --install.")
+        if sh('xcode-select -p') == '':
+            fatal("Xcode tools are not installed. Please run xcode-select --install.") 
         self.install_gnu_utils()
 
     def common_last(self):

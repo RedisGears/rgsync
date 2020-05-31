@@ -2,10 +2,10 @@
 
 import sys
 import os
-from subprocess import Popen, PIPE
 import argparse
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../deps/readies"))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT, "deps/readies")
 import paella
 
 #----------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class RGSyncSetup(paella.Setup):
         self.pip3_install("wheel virtualenv")
         self.pip3_install("setuptools --upgrade")
         
-        self.pip3_install("-r deps/readies/paella/requirements.txt")
+        self.pip3_install(f"-r {ROOT}/deps/readies/paella/requirements.txt")
         self.install("git zip unzip")
 
     def debian_compat(self):
@@ -30,7 +30,7 @@ class RGSyncSetup(paella.Setup):
     def redhat_compat(self):
         self.install("redhat-lsb-core")
 
-        # enable en_US.utf8 locale
+        # enable utf8 locale
         self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
         self.run("yum reinstall -y glibc-common")
 
@@ -44,6 +44,7 @@ class RGSyncSetup(paella.Setup):
         self.pip3_install("--no-cache-dir git+https://github.com/Grokzen/redis-py-cluster.git@master")
         self.pip3_install("--no-cache-dir git+https://github.com/RedisLabsModules/RLTest.git@master")
         self.pip3_install("git+https://github.com/RedisGears/gears-cli.git")
+        self.pip3_install(f"-r {ROOT}/requirements.txt")
 
 #----------------------------------------------------------------------------------------------
 
