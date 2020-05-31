@@ -36,4 +36,4 @@ zip $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip *.zip
 cd ..
 rm -rf $REQS_PATH
 
-echo $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip
+echo $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip > $ROOT/bin/artifacts/artifact

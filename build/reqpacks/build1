@@ -37,8 +37,9 @@ sleep 2
 ARTIFACTS=$ROOT/bin/artifacts
 mkdir -p $ARTIFACTS
 
-file=`docker exec $did ./build/reqpacks/build2`
-docker cp $did:$file $ARTIFACTS
+docker exec $did ./build/reqpacks/build2
+artifact=`docker exec $did cat bin/artifacts/artifact`
+docker cp $did:$artifact $ARTIFACTS
 
 docker stop $did
 rm -f $cid

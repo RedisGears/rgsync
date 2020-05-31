@@ -26,12 +26,12 @@ commands:
 
   setup-docker:
     steps:
-      - run:
-          name: Setup executor
-          command: |
-            apt-get -qq update
-            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
+#      - run:
+#          name: Setup executor
+#          command: |
+#            apt-get -qq update
+#            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+#            bash <(curl -fsSL https://get.docker.com)
       - setup_remote_docker
 
   platform-build-steps:
@@ -80,7 +80,8 @@ jobs:
       platform:
         type: string
     docker:
-      - image: 'debian:buster'
+      # - image: 'debian:buster'
+      - image: 'cimg/base:2020.01'
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
