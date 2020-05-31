@@ -110,8 +110,8 @@ platform-builds-requires: &platform-builds-requires
     - build-xenial
 
 platform-builds-flow-defs: &platform-builds-flow-defs
-  requires:
-    - build_and_test
+#  requires:
+#    - build_and_test
   filters:
     branches:
       only: /.*/
@@ -127,7 +127,7 @@ workflows:
   version: 2
   commit:
     jobs:
-      - build_and_test
+#      - build_and_test
       - platform-build:
           name: build-bionic
           platform: bionic
@@ -159,5 +159,5 @@ workflows:
             branches:
               only:
                 - master
-    jobs:
-      - build_and_test
+#    jobs:
+#      - build_and_test
