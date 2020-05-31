@@ -32,7 +32,7 @@ commands:
 #            apt-get -qq update
 #            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
 #            bash <(curl -fsSL https://get.docker.com)
-      - setup_remote_docker
+      - setup_remote_docker:
           docker_layer_caching: true
 
   platform-build-steps:
