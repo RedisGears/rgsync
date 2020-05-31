@@ -100,7 +100,7 @@ jobs:
           name: Deploy Releases to S3
           command: |
             for f in bin/artifacts/*.zip; do
-              aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
+              sudo aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
             done
 
 platform-builds-requires: &platform-builds-requires
