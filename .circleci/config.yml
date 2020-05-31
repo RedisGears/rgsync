@@ -8,8 +8,8 @@ commands:
           command: |
             mkdir -p deps
             (cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            sudo ./deps/readies/bin/getpy3
-            sudo ./sbin/system-setup.py
+            ./deps/readies/bin/getpy3
+            ./sbin/system-setup.py
 
   setup-gears:
     steps:
@@ -26,12 +26,12 @@ commands:
 
   setup-docker:
     steps:
-#      - run:
-#          name: Setup executor
-#          command: |
-#            apt-get -qq update
-#            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-#            bash <(curl -fsSL https://get.docker.com)
+      - run:
+          name: Setup executor
+          command: |
+            apt-get -qq update
+            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+            bash <(curl -fsSL https://get.docker.com)
       - setup_remote_docker:
           docker_layer_caching: true
 
@@ -81,8 +81,7 @@ jobs:
       platform:
         type: string
     docker:
-      # - image: 'debian:buster'
-      - image: 'cimg/base:2020.01'
+      - image: 'debian:buster'
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
