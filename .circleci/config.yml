@@ -1,10 +1,21 @@
 version: 2.1
 
 commands: 
-  setup-readies:
+  setup-executor:
     steps:
       - run:
-          name: Setup Readies
+          name: Setup executor
+          command: |
+            apt-get -qq update
+            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+            bash <(curl -fsSL https://get.docker.com)
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+  setup-automation:
+    steps:
+      - run:
+          name: Setup Automation
           command: |
             mkdir -p deps
             (cd deps; git clone https://github.com/RedisLabsModules/readies.git)
@@ -24,25 +35,14 @@ commands:
             cd /var/opt/redislabs/modules/rg
             tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
 
-  setup-docker:
-    steps:
-      - run:
-          name: Setup executor
-          command: |
-            apt-get -qq update
-            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
-      - setup_remote_docker:
-          docker_layer_caching: true
-
   platform-build-steps:
     parameters:
       platform:
         type: string
     steps:
+      - setup-executor
       - checkout
-      - setup-docker
-      - setup-readies
+      - setup-automation
       - run:
           name: Build for platform
           command: |
@@ -59,7 +59,7 @@ jobs:
       - image: 'ubuntu:bionic'
     steps:
       - checkout
-      - setup-readies
+      - setup-automation
       - run:
           name: Setup Redis
           command: ./deps/readies/bin/getredis --version 6
@@ -109,8 +109,8 @@ platform-builds-requires: &platform-builds-requires
     - build-xenial
 
 platform-builds-flow-defs: &platform-builds-flow-defs
-#  requires:
-#    - build_and_test
+  requires:
+    - build_and_test
   filters:
     branches:
       only: /.*/
@@ -126,7 +126,7 @@ workflows:
   version: 2
   commit:
     jobs:
-      # - build_and_test
+      - build_and_test
       - platform-build:
           name: build-bionic
           platform: bionic
