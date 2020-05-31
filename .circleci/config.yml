@@ -88,10 +88,13 @@ jobs:
  
   deploy-artifacts:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-buster'
+      - image: 'cimg/base:2020.01'
     steps:
       - attach_workspace:
           at: bin/artifacts
+      - run:
+          name: Setup
+          command: sudo apt-get update && sudo apt-get install -y awscli
       - run:
           name: Deploy Releases to S3
           command: |
@@ -101,9 +104,9 @@ jobs:
 
 platform-builds-requires: &platform-builds-requires
   requires:
-#    - build-centos7
+    - build-centos7
     - build-bionic
-#    - build-xenial
+    - build-xenial
 
 platform-builds-flow-defs: &platform-builds-flow-defs
 #  requires:
@@ -128,14 +131,14 @@ workflows:
           name: build-bionic
           platform: bionic
           <<: *platform-builds-flow-defs
-#      - platform-build:
-#          name: build-centos7
-#          platform: centos7
-#          <<: *platform-builds-flow-defs
-#      - platform-build:
-#          name: build-xenial
-#          platform: xenial
-#          <<: *platform-builds-flow-defs
+      - platform-build:
+          name: build-centos7
+          platform: centos7
+          <<: *platform-builds-flow-defs
+      - platform-build:
+          name: build-xenial
+          platform: xenial
+          <<: *platform-builds-flow-defs
       - deploy-artifacts:
           <<: *platform-builds-requires
           filters:
