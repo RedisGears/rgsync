@@ -8,8 +8,8 @@ commands:
           command: |
             mkdir -p deps
             (cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            ./deps/readies/bin/getpy3
-            ./sbin/system-setup.py
+            sudo ./deps/readies/bin/getpy3
+            sudo ./sbin/system-setup.py
 
   setup-gears:
     steps:
@@ -33,6 +33,7 @@ commands:
 #            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
 #            bash <(curl -fsSL https://get.docker.com)
       - setup_remote_docker
+          docker_layer_caching: true
 
   platform-build-steps:
     parameters:
