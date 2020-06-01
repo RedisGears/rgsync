@@ -110,31 +110,54 @@ jobs:
               aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
             done
 
-platform-builds-requires: &platform-builds-requires
+after-platform-builds: &after-platform-builds
   requires:
     - build-centos7
     - build-bionic
     - build-xenial
 
-platform-builds-flow-defs: &platform-builds-flow-defs
-  requires:
-    - build_and_test
+on-any-branch: &on-any-branch
   filters:
     branches:
       only: /.*/
     tags:
       only: /.*/
+
+on-master-and-version-tags: &on-master-and-version-tags
+#  filters:
 #    branches:
 #      only:
 #        - master
 #    tags:
 #      only: /^v[0-9].*/
+  # (switch to this when debugging)
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
+
+platform-builds-flow-defs: &platform-builds-flow-defs
+  requires:
+    - build_and_test
+  <<: *on-master-and-version-tags
+#  filters:
+#    branches:
+#      only: /.*/
+#    tags:
+#      only: /.*/
+##    branches:
+##      only:
+##        - master
+##    tags:
+##      only: /^v[0-9].*/
 
 workflows:
   version: 2
   commit:
     jobs:
       - build_and_test
+          <<: *on-any-branch
       - platform-build:
           name: build-bionic
           platform: bionic
@@ -148,24 +171,25 @@ workflows:
           platform: xenial
           <<: *platform-builds-flow-defs
       - deploy-artifacts:
-          <<: *platform-builds-requires
-          filters:
-            branches:
-              only: /.*/
-            tags:
-              only: /.*/
-#            branches:
-#              only: master
-#            tags:
-#              only: /^v[0-9].*/
-
-#  nightly:
-#    triggers:
-#      - schedule:
-#          cron: "0 0 * * *"
+          <<: *after-platform-builds
+          <<: *on-any-branch
 #          filters:
 #            branches:
-#              only:
-#                - master
-#    jobs:
-#      - build_and_test
+#              only: /.*/
+#            tags:
+#              only: /.*/
+##            branches:
+##              only: master
+##            tags:
+##              only: /^v[0-9].*/
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_and_test

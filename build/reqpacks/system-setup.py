@@ -4,7 +4,8 @@ import sys
 import os
 import argparse
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+HERE = os.path.join(os.path.dirname(__file__)
+ROOT = os.path.abspath(HERE, "../.."))
 sys.path.insert(0, os.path.join(ROOT, "deps/readies"))
 import paella
 
@@ -30,8 +31,7 @@ class ReqPacksSetup(paella.Setup):
 
     def redhat_compat(self):
         # enable utf8 locale
-        self.run("sed -i 's/^\(override_install_langs=\)/# \1/' /etc/yum.conf")
-        self.run("yum reinstall -y glibc-common")
+        self.run("%s/deps/readies/bin/enable-utf8" % ROOT)
         
         self.group_install("'Development Tools'")
         self.install("redhat-lsb-core")

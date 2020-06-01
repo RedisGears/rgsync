@@ -14,7 +14,7 @@ WORKDIR /rgsync
 
 ADD . /rgsync
 
-RUN	./deps/readies/bin/getpy3
+RUN ./deps/readies/bin/getpy3
 RUN ./build/reqpacks/system-setup.py
 
 CMD ["--loadmodule", "/var/opt/redislabs/lib/modules/redisgears.so"]
