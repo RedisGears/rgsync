@@ -15,10 +15,9 @@ commands:
   setup-automation:
     steps:
       - run:
-          name: Setup Automation
+          name: Setup automation
           command: |
-            mkdir -p deps
-            (cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
             ./deps/readies/bin/getpy3
             ./sbin/system-setup.py
 
@@ -53,7 +52,7 @@ commands:
             - '*.zip'
 
 jobs:
-  build_and_test:
+  build-and-test:
     docker:
       - image: 'ubuntu:bionic'
     steps:
@@ -96,19 +95,8 @@ jobs:
           name: Setup
           command: sudo apt-get update && sudo apt-get install -y awscli
       - run:
-          name: Deploy Releases to S3
-          command: |
-            trim() {
-              local s2 s="$*"
-              until s2="${s#[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
-              until s2="${s%[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
-              echo "$s"
-            }
-            export AWS_ACCESS_KEY_ID=$(trim "$AWS_ACCESS_KEY_ID")
-            export AWS_SECRET_ACCESS_KEY=$(trim "$AWS_SECRET_ACCESS_KEY")
-            for f in bin/artifacts/*.zip; do
-              aws s3 cp $f s3://redismodules/rgsync/ --acl public-read
-            done
+          name: Deploy artifacts to S3
+          command: ./sbin/deploy-artifacts
 
 after-platform-builds: &after-platform-builds
   requires:
@@ -130,58 +118,39 @@ on-master-and-version-tags: &on-master-and-version-tags
 #        - master
 #    tags:
 #      only: /^v[0-9].*/
-  # (switch to this when debugging)
+  # (switch to the following when debugging)
   filters:
     branches:
       only: /.*/
     tags:
       only: /.*/
 
-platform-builds-flow-defs: &platform-builds-flow-defs
+platform-build-defs: &platform-build-defs
   requires:
-    - build_and_test
+    - build-and-test
   <<: *on-master-and-version-tags
-#  filters:
-#    branches:
-#      only: /.*/
-#    tags:
-#      only: /.*/
-##    branches:
-##      only:
-##        - master
-##    tags:
-##      only: /^v[0-9].*/
 
 workflows:
   version: 2
   commit:
     jobs:
-      - build_and_test:
+      - build-and-test:
           <<: *on-any-branch
       - platform-build:
           name: build-bionic
           platform: bionic
-          <<: *platform-builds-flow-defs
+          <<: *platform-build-defs
       - platform-build:
           name: build-centos7
           platform: centos7
-          <<: *platform-builds-flow-defs
+          <<: *platform-build-defs
       - platform-build:
           name: build-xenial
           platform: xenial
-          <<: *platform-builds-flow-defs
+          <<: *platform-build-defs
       - deploy-artifacts:
           <<: *after-platform-builds
           <<: *on-any-branch
-#          filters:
-#            branches:
-#              only: /.*/
-#            tags:
-#              only: /.*/
-##            branches:
-##              only: master
-##            tags:
-##              only: /^v[0-9].*/
 
   nightly:
     triggers:
@@ -192,4 +161,4 @@ workflows:
               only:
                 - master
     jobs:
-      - build_and_test
+      - build-and-test
