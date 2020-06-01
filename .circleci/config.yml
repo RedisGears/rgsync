@@ -21,19 +21,6 @@ commands:
             ./deps/readies/bin/getpy3
             ./sbin/system-setup.py
 
-  setup-gears:
-    steps:
-      - run:
-          name: Setup Gears
-          command: |
-            cd ..
-            wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears.linux-bionic-x64.master.zip
-            unzip redisgears.linux-bionic-x64.master.zip
-            wget http://redismodules.s3.amazonaws.com/redisgears/snapshots/redisgears-dependencies.linux-bionic-x64.master.tgz
-            mkdir -p /var/opt/redislabs/modules/rg
-            cd /var/opt/redislabs/modules/rg
-            tar -xvf /root/redisgears-dependencies.linux-bionic-x64.master.tgz
-
   platform-build-steps:
     parameters:
       platform:
@@ -60,20 +47,21 @@ jobs:
       - checkout
       - setup-automation
       - run:
-          name: Setup Redis
+          name: Install Redis
           command: ./deps/readies/bin/getredis --version 6
-      - setup-gears
       - run:
           name: Setup MySQL
           command: |
             service mysql start
             ./sbin/setup-mysql
       - run:
-          name: Install rgsync
-          command: /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
+          name: Install Gears and rgsync
+          command: |
+            ./sbin/setup-gears
+            /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
       - run:
           name: Tests
-          command: python3 -m RLTest --module ../redisgears.so
+          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so
 
   platform-build:
     parameters:
