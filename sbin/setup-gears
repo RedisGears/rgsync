@@ -12,12 +12,14 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 d=$(mktemp -d /tmp/gears.XXXXXX)
 cd $d
 
+mkdir -p /var/opt/redislabs/modules/rg
+
 wget -O gears.zip $S3_URL/redisgears.${PLATFORM}.${VERSION}.zip
 unzip gears.zip
 mv redisgears.so /var/opt/redislabs/modules/rg/
 
 wget -O deps.tgz $S3_URL/redisgears-dependencies.${PLATFORM}.${VERSION}.tgz
-mkdir -p /var/opt/redislabs/modules/rg
 tar -xzf deps.tgz -C /var/opt/redislabs/modules/rg
+
 cd $HERE
 rm -rf $d
