@@ -3,12 +3,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 import time
 
-def utf(d):
+def to_utf(d):
+    if isinstance(d, str):
+        return d.encode('utf-8')
     if isinstance(d, dict):
-        return {k.encode('utf-8'): v.encode('utf-8') for k, v in d.items()}
+        return {to_utf(k): to_utf(v) for k, v in d.items()}
     if isinstance(d, list):
-        return [x.encode('utf-8') for x in d]
-    return d.encode('utf-8')
+        return [to_utf(x) for x in d]
+    return d
 
 def Connect():
     ConnectionStr = 'mysql+pymysql://{user}:{password}@{db}'.format(user='demouser', password='Password123!', db='localhost:3306/test')
@@ -59,7 +61,7 @@ class testWriteBehind:
     			self.env.assertTrue(False, message='Failed on deleting data from the target')
     			break
     		count+=1
-    	self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
     	result = self.dbConn.execute(text('select * from test.persons'))
     	res = result.next()
@@ -76,7 +78,7 @@ class testWriteBehind:
     			self.env.assertTrue(False, message='Failed on deleting data from the target')
     			break
     		count+=1
-    	self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
     	self.env.expect('hgetall', 'person:1').equal({})
     	result = self.dbConn.execute(text('select * from test.persons'))
     	self.env.assertEqual(result.rowcount, 0)
@@ -88,9 +90,9 @@ class testWriteBehind:
     	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
     	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
     	res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-    	self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	self.env.expect('hgetall', 'person:1').equal(utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+    	self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
 
     	# make sure data is not in the database
     	result = self.dbConn.execute(text('select * from test.persons'))
@@ -106,7 +108,7 @@ class testWriteBehind:
     			self.env.assertTrue(False, message='Failed on deleting data from the target')
     			break
     		count+=1
-    	self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
     	result = self.dbConn.execute(text('select * from test.persons'))
     	res = result.next()
@@ -116,7 +118,7 @@ class testWriteBehind:
     	self.env.cmd('hset', 'person:1', '#', '-')
     	self.env.cmd('hset', 'person:1', '#', '-3')
     	res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
-    	self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
     	self.env.expect('hgetall', 'person:1').equal({})
 
@@ -127,7 +129,7 @@ class testWriteBehind:
 
     	# rewrite a hash and not replicate
     	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
-    	self.env.expect('hgetall', 'person:1').equal(utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+    	self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
 
     	# delete data with replicate and make sure its deleted from database and from redis
     	self.env.cmd('hset', 'person:1', '#', '~')
@@ -152,7 +154,7 @@ class testWriteBehind:
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
         self.env.cmd('hset __{person:1} # ~')
 
@@ -172,7 +174,7 @@ class testWriteBehind:
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
         self.env.cmd('hset __{person:1} first_name foo1')
 
@@ -181,7 +183,7 @@ class testWriteBehind:
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo1', 'bar', 20))
 
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo1'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo1'}))
 
         self.env.cmd('hset __{person:1} # ~')
 
@@ -200,7 +202,7 @@ class testWriteBehind:
         result = self.dbConn.execute(text('select * from test.persons'))
         self.env.assertEqual(result.rowcount, 0)
 
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
     def testDelThroughNoReplicate(self):
         self.env.cmd('flushall')
@@ -212,7 +214,7 @@ class testWriteBehind:
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
         self.env.cmd('hset __{person:1} # -')
 
@@ -235,7 +237,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # =1')
 
         res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-        self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is in the dabase
         result = self.dbConn.execute(text('select * from test.persons'))
@@ -243,12 +245,12 @@ class testWriteBehind:
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
         # make sure data is in redis
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # ~2')
 
         res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-        self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is deleted from the database
         result = self.dbConn.execute(text('select * from test.persons'))
@@ -262,19 +264,19 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +1')
 
         res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-        self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is not in the target
         result = self.dbConn.execute(text('select * from test.persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         # make sure data is in redis
-        self.env.expect('hgetall', 'person:1').equal(utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
 
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # -2')
 
         res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-        self.env.assertEqual(res[0][1][0][1], utf(['status', 'done']))
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is deleted from redis
         self.env.expect('hgetall', 'person:1').equal({})
