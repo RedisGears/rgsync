@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -xe
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+ROOT=$(cd $HERE/../..; pwd)
+
+GEARS_VERSION=${GEARS_VERSION:-master}
+OSNICK=${OSNICK:-bionic}
+ARCH=${ARCH:-x64}
+
+if [[ `$ROOT/deps/readies/bin/istagfresh > /tmp/rgver 2> /dev/null; echo $?` == 0 ]]; then
+	BRSPEC="$(cat /tmp/rgver)"
+	RGSYNC_VERSION="@$(cat /tmp/rgver | sed 's/^v\(.*\)/\1/')"
+else
+	BRSPEC=""
+	RGSYNC_VERSION=99.99.99
+fi
+
+echo "RGSYNC_VERSION=$RGSYNC_VERSION" > $HERE/env
+$ROOT/deps/readies/bin/xtx -e BRSPEC $HERE/requirements.txt | sed -e '/^[ \t]*#/d' > $HERE/requirements.final
+
+cd $ROOT
+docker build -t rgsync-reqpacks:${ARCH}-${OSNICK} -f build/reqpacks/Dockerfile \
+	--build-arg GEARS_VERSION=${GEARS_VERSION} \
+	--build-arg OSNICK=${OSNICK} \
+	--build-arg ARCH=${ARCH} \
+	.
+
+cid=$(mktemp /tmp/gears.cid.XXXXXX)
+rm -f $cid
+docker run -d --cidfile $cid rgsync-reqpacks:${ARCH}-${OSNICK}
+did=`cat $cid`
+# docker exec ./sbin/wait-for-redis
+sleep 2
+
+ARTIFACTS=$ROOT/bin/artifacts
+mkdir -p $ARTIFACTS
+
+docker exec $did ./build/reqpacks/build-internal
+artifact=`docker exec $did cat bin/artifacts/artifact`
+docker cp $did:$artifact $ARTIFACTS
+
+docker stop $did
+rm -f $cid

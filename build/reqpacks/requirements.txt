@@ -1,0 +1,6 @@
+git+https://github.com/RedisGears/rgsync.git{{BRSPEC}}
+PyMySQL
+cx-Oracle
+# pysqlite3
+cassandra-driver
+snowflake-sqlalchemy
