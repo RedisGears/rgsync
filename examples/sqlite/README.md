@@ -7,6 +7,8 @@ gears-cli  --host <host> --port <port> --password <password> example.py --requir
 
 ## Connect the DB
 
+To connect the DB directly to verify the data in the database
+
 ### Install SQLite (on ubuntu)
 ```bash
 sudo apt-get install sqlite3 libsqlite3-dev
