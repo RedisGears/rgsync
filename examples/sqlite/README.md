@@ -11,7 +11,7 @@ sudo apt-get install sqlite3 libsqlite3-dev
 yum install sqlite
 ```
 
-### Create Persons table
+## Create Persons table
 Run `sqlite3 /tmp/mydatabase.db` and create the `persons` table with the folowing line:
 ```bash
 sqlite> CREATE TABLE persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));
