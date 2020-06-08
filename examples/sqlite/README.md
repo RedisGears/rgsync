@@ -1,7 +1,5 @@
 ## Connect the DB
 
-Connect the DB directly to verify the data in the database
-
 ### Install SQLite (on ubuntu)
 ```bash
 sudo apt-get install sqlite3 libsqlite3-dev
@@ -12,6 +10,7 @@ Run `sqlite3 < db file path >` and create the `persons` table with the folowing 
 ```bash
 sqlite> CREATE TABLE persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));
 ```
+
 
 ## Running the recipe
 Please use <a href="https://github.com/RedisGears/gears-cli">gears-cli</a> to send a RedisGears Write-Behind and/or Write-Through recipe for execution. For example, run the sample [SQLite](example.py) recipe (contains the mapping of sqlite tables with Redis Hashes and RedisGears registrations) and install its dependencies with the following command:
