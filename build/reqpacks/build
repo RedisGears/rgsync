@@ -5,7 +5,6 @@ set -xe
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 ROOT=$(cd $HERE/../..; pwd)
 
-GEARS_VERSION=${GEARS_VERSION:-master}
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
@@ -15,6 +14,15 @@ if [[ `$ROOT/deps/readies/bin/istagfresh > /tmp/rgver 2> /dev/null; echo $?` == 
 else
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
+fi
+
+if [[ -z $GEARS_VERSION ]]; then
+	# map rgsync versions to Gears versions
+	if [[ $RGSYNC_VERSION == 99.99.99 ]]; then
+		GEARS_VERSION=master
+	else
+		GEARS_VERSION=1.0.1
+	fi
 fi
 
 echo "RGSYNC_VERSION=$RGSYNC_VERSION" > $HERE/env
