@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -xe
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+ROOT=$(cd $HERE/../..; pwd)
+READIES=$ROOT/deps/readies
+
+. $HERE/env
+[[ -z $RGSYNC_VERSION ]] && { echo "RGSYNC_VERSION is not defined. Aborting"; exit 1; }
+PLATFORM=`$READIES/bin/platform -t`
+
+. $READIES/bin/enable-utf8
+
+touch $HERE/none.py
+python3 -m gears_cli run --requirements $HERE/requirements.final $HERE/none.py
+
+REQS_PATH=$ROOT/bin/artifacts/reqs
+rm -rf $REQS_PATH
+mkdir -p $REQS_PATH
+python3 -m gears_cli export-requirements --all --save-directory $REQS_PATH
+
+# DONE=false
+# until $DONE; do
+# 	read || DONE=true
+# 	if [[ ! -z $REPLY ]]; then
+# 		 python3 -m gears_cli export-requirements --save-directory $REQS_PATH --requirement $REPLY
+# 	fi
+# done < $HERE/requirements.final
+
+cd $REQS_PATH
+zip $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip *.zip
+cd ..
+rm -rf $REQS_PATH
+
+$READIES/bin/platform -t > $ROOT/bin/artifacts/platform
+echo $ROOT/bin/artifacts/rgsync-${RGSYNC_VERSION}.${PLATFORM}.zip > $ROOT/bin/artifacts/artifact

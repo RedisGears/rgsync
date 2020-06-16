@@ -4,7 +4,7 @@ from rgsync.Connectors import SQLiteConnector, SQLiteConnection
 '''
 Create MySQL connection object
 '''
-connection = SQLiteConnection('/home/meir/mydatabase.db')
+connection = SQLiteConnection('/tmp/mydatabase.db')
 
 '''
 Create MySQL persons connector
