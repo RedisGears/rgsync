@@ -1,0 +1,20 @@
+#!/bin/bash
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+ROOT=$(cd $HERE/..; pwd)
+
+S3_DIR=s3://redismodules/rgsync/
+
+trim() {
+	local s2 s="$*"
+	until s2="${s#[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
+	until s2="${s%[[:space:]]}"; [ "$s2" = "$s" ]; do s="$s2"; done
+	echo "$s"
+}
+
+export AWS_ACCESS_KEY_ID=$(trim "$AWS_ACCESS_KEY_ID")
+export AWS_SECRET_ACCESS_KEY=$(trim "$AWS_SECRET_ACCESS_KEY")
+
+for f in $ROOT/bin/artifacts/*.zip; do
+	aws s3 cp $f $S3_DIR --acl public-read
+done

@@ -29,7 +29,7 @@ Create MySQL persons connector
 persons - MySQL table to put the data
 person_id - primary key
 '''
-personConnector = MySqlConnector(mySqlConnection, 'persons', 'person_id')
+personConnector = MySqlConnector(connection, 'persons', 'person_id')
 
 personsMappings = {
 	'first_name':'first',

@@ -4,10 +4,26 @@ import json
 
 class CqlConnection():
     def __init__(self, user, password, db, keyspace):
-        self.user = user
-        self.password = password
-        self.db = db
-        self.keyspace = keyspace
+        self._user = user
+        self._password = password
+        self._db = db
+        self._keyspace = keyspace
+
+    @property
+    def user(self):
+        return self._user() if callable(self._user) else self._user
+
+    @property
+    def password(self):
+        return self._password() if callable(self._password) else self._password
+
+    @property
+    def db(self):
+        return self._db() if callable(self._db) else self._db
+
+    @property
+    def keyspace(self):
+        return self._keyspace() if callable(self._keyspace) else self._keyspace
 
     def _getConnectionStr(self):
         return json.dumps({'user': self.user, 'password': self.password, 'db': self.db, 'keyspace': self.keyspace})
@@ -18,7 +34,7 @@ class CqlConnection():
 
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog('Connect: connecting ConnectionStr=%s' % (ConnectionStr))
+        WriteBehindLog('Connect: connecting db=%s user=%s keyspace=%s' % (self.db, self.user, self.keyspace))
         auth_provider = PlainTextAuthProvider(username=self.user, password=self.password)
         cluster = Cluster(self.db.split(), auth_provider=auth_provider)
         if self.keyspace != '':
