@@ -1,7 +1,8 @@
 /bin/
 /deps/readies/
 /[0-9]*/
-!/build/reqpacks/
+/build/reqpacks/env
+/build/reqpacks/requirements.final
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -13,7 +14,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+/build/bdist.linux-x86_64/
+/build/lib/
 develop-eggs/
 dist/
 downloads/
