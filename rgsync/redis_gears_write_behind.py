@@ -182,18 +182,18 @@ def CreateAddToStreamFunction(self):
 
 def CreateWriteDataFunction(connector):
     def func(data):
-        idsToAck = []
-        for d in data:
-            originalKey = d['value'].pop(ORIGINAL_KEY, None)
-            uuid = d['value'].pop(UUID_KEY, None)
-            if uuid is not None and uuid != '':
-                idsToAck.append('{%s}%s' % (originalKey, uuid))
+        # idsToAck = []
+        # for d in data:
+        #     originalKey = d['value'].pop(ORIGINAL_KEY, None)
+        #     uuid = d['value'].pop(UUID_KEY, None)
+        #     if uuid is not None and uuid != '':
+        #         idsToAck.append('{%s}%s' % (originalKey, uuid))
 
         connector.WriteData(data)
 
-        for idToAck in idsToAck:
-            execute('XADD', idToAck, '*', 'status', 'done')
-            execute('EXPIRE', idToAck, ackExpireSeconds)
+        # for idToAck in idsToAck:
+        #     execute('XADD', idToAck, '*', 'status', 'done')
+        #     execute('EXPIRE', idToAck, ackExpireSeconds)
 
     return func
 
@@ -372,24 +372,24 @@ class RGWriteBehind(RGWriteBase):
 
         eventTypes - The events for which to trigger
         '''
-        UUID = str(uuid.uuid4())
-        self.GetStreamName = CreateGetStreamNameCallback(UUID)
+        # UUID = str(uuid.uuid4())
+        # self.GetStreamName = CreateGetStreamNameCallback(UUID)
 
         RGWriteBase.__init__(self, mappings, connector, name, version)
 
         ## create the execution to write each changed key to stream
-        descJson = {
-            'name':'%s.KeysReader' % name,
-            'version':version,
-            'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
-        }
-        GB('KeysReader', desc=json.dumps(descJson)).\
-        map(transform).\
-        filter(ValidateHash).\
-        filter(ShouldProcessHash).\
-        foreach(DeleteHashIfNeeded).\
-        foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+        # descJson = {
+        #     'name':'%s.KeysReader' % name,
+        #     'version':version,
+        #     'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
+        # }
+        # GB('KeysReader', desc=json.dumps(descJson)).\
+        # map(transform).\
+        # filter(ValidateHash).\
+        # filter(ShouldProcessHash).\
+        # foreach(DeleteHashIfNeeded).\
+        # foreach(CreateAddToStreamFunction(self)).\
+        # register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
 
         ## create the execution to write each key from stream to DB
         descJson = {
@@ -401,7 +401,7 @@ class RGWriteBehind(RGWriteBase):
         aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
         foreach(CreateWriteDataFunction(self.connector)).\
         count().\
-        register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
+        register(prefix='%s-stream' % (self.connector.TableName()),
                  mode="async_local",
                  batch=batch,
                  duration=duration,
