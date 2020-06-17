@@ -10,7 +10,7 @@ ARCH=${ARCH:-x64}
 
 if [[ `$ROOT/deps/readies/bin/istagfresh > /tmp/rgver 2> /dev/null; echo $?` == 0 ]]; then
 	BRSPEC="$(cat /tmp/rgver)"
-	RGSYNC_VERSION="@$(cat /tmp/rgver | sed 's/^v\(.*\)/\1/')"
+	RGSYNC_VERSION="$(cat /tmp/rgver | sed 's/^v\(.*\)/\1/')"
 else
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
