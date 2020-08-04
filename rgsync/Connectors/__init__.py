@@ -1,6 +1,7 @@
 from .simple_hash_connector import SimpleHashConnector
 from .sql_connectors import MySqlConnector, SQLiteConnection, OracleSqlConnector,SnowflakeSqlConnector,MySqlConnection,OracleSqlConnection,SnowflakeSqlConnection,SQLiteConnector
 from .cql_connector import CqlConnector, CqlConnection
+from .redis_connector import RedisConnector, RedisConnection
 
 __all__ = [
     'SimpleHashConnector',
@@ -13,5 +14,8 @@ __all__ = [
     'SnowflakeSqlConnection',
 
     'CqlConnector',
-    'CqlConnection'
+    'CqlConnection',
+
+    'RedisConnector',
+    'RedisConnection'
 ]
