@@ -2,7 +2,6 @@ from rgsync.common import *
 from redisgears import getMyHashTag as hashtag
 
 
-
 # redis connection class
 class RedisConnection():
     def __init__(self, host, port, password=None):
@@ -32,7 +31,6 @@ class RedisConnection():
             WriteBehindLog(msg)
             raise Exception(msg) from None
         return r
-
 
 
 # redis cluster connection class
@@ -71,11 +69,8 @@ class RedisClusterConnection():
         return rc
 
 
-
 SIMPLE_HASH_BACKEND_PK = 'HashBackendPK'
 SIMPLE_HASH_BACKEND_TABLE = 'HashBackendTable'
-
-
 
 # redis connector class
 class RedisConnector():
@@ -106,7 +101,14 @@ class RedisConnector():
         # in case of exactly once get last id written
         shardId = None
         try:
-            if self.exactlyOnceTableName is not None:
+            # Raise eception in case of exactly once property is used in RedisCluster
+            if((self.exactlyOnceTableName is not None) and
+                    isinstance(self.connection, RedisClusterConnection)):
+                msg = "Exactly once property is not valid for Redis cluster"
+                raise Exception(msg) from None
+            # Get the entry corresponding to shard id in exactly once table
+            elif((self.exactlyOnceTableName is not None) and
+                    isinstance(self.connection, RedisConnection)):
                 shardId = 'shard-%s' % hashtag()
                 res = self.session.execute_command('HGET', self.exactlyOnceTableName, shardId)
                 if res is not None:
@@ -124,11 +126,8 @@ class RedisConnector():
 
         pipe = self.session.pipeline()
         try:
-
             # data is list of dictionaries
             # iterate over one by one and extract a dictionary and process it
-            batch = []
-            isAddBatch = True if data[0]['value'][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
             lastStreamId = None
             for d in data:
                 d_val = d['value']              # get value of key 'value' from dictionary
@@ -138,62 +137,30 @@ class RedisConnector():
                     WriteBehindLog('Skip {} as it was already written to the backend'.format(lastStreamId))
                     continue
 
+                self.shouldCompareId = False
+
                 # check operation permission, what gets replicated
                 op = d_val.pop(OP_KEY, None)        # pop the operation key out of the record 
                 if op not in self.supportedOperations:
                     msg = 'Got unknown operation'
-                    WriteBehindLog(msg)
                     raise Exception(msg) from None
 
                 pk = d_val.pop(SIMPLE_HASH_BACKEND_PK)
                 newKey = '{}:{}'.format(self.new_prefix, pk)
 
-                self.shouldCompareId = False
                 if op != OPERATION_UPDATE_REPLICATE:
-                    if isAddBatch:
-                        # process update batch
-                        for kv_pair in batch:
-                            for k, v in kv_pair.items():
-                                pipe.hset(k, mapping=v)
-                        
-                        batch = []
-                        isAddBatch = False
-
-                    # append key to delete in list
-                    batch.append(newKey)
+                    # pipeline key to delete 
+                    pipe.delete(newKey)
                 else:
-                    if not isAddBatch:
-                        # process delete batch
-                        if(isinstance(self.connection, RedisConnection)):
-                            pipe.delete(*batch)
-                        elif(isinstance(self.connection, RedisClusterConnection)):      # multi key deletion is not supported in cluster
-                            for key in batch:
-                                pipe.delete(key)
-
-                        batch = []
-                        isAddBatch = True
-
-                    # make a dictionary and adda element with new key as its key and field-value mapping as its value
-                    # append this dictionary to list
-                    d = dict()
-                    d[newKey] = d_val
-                    batch.append(d)
-
-            if(0 < len(batch)) and isAddBatch:
-                for kv_pair in batch:
-                    for k, v in kv_pair.items():
-                        pipe.hset(k, mapping=v)
-            if(0 < len(batch)) and (not isAddBatch):
-                if(isinstance(self.connection, RedisConnection)):
-                    pipe.delete(*batch)
-                elif(isinstance(self.connection, RedisClusterConnection)):      # multi key deletion is not supported in cluster
-                    for key in batch:
-                        pipe.delete(key)
+                    # pipeline key and field-value mapping to set
+                    pipe.hset(newKey, mapping=d_val)
             
             pipe.execute()
 
-            # make entry for exactly once
-            if self.exactlyOnceTableName is not None:
+            # make entry for exactly once. In case of Redis cluster exception will be raised already
+            if((self.exactlyOnceTableName is not None) and
+                    isinstance(self.connection, RedisConnection)):
+                # error handling is not done as once entry is created update will return 0 
                 res = self.session.execute_command('HSET', self.exactlyOnceTableName, shardId, lastStreamId)
 
         except Exception as e:

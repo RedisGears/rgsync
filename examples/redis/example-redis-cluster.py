@@ -2,9 +2,10 @@ from rgsync import RGWriteBehind
 from rgsync.Connectors import RedisConnector, RedisConnection, RedisClusterConnection
 
 '''
-Create Redis Connection
+Create Redis Cluster Connection
 '''
-r_conn = RedisClusterConnection(host='127.0.0.1', port=7001)
+cnodes = [{"host": "127.0.0.1", "port": "7001"}, {"host": "127.0.0.1", "port": "7002"}, {"host": "127.0.0.1", "port": "7003"}]
+r_conn = RedisClusterConnection(host=None, port=None, cluster_nodes=cnodes)
 
 
 '''
