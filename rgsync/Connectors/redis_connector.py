@@ -82,6 +82,11 @@ class RedisConnector():
         self.exactlyOnceTableName = exactlyOnceTableName
         self.exactlyOnceLastId = None
         self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
+        # Raise eception in case of exactly once property is used in RedisCluster
+        if((self.exactlyOnceTableName is not None) and
+                isinstance(self.connection, RedisClusterConnection)):
+            msg = "Exactly once property is not valid for Redis cluster"
+            raise Exception(msg) from None
 
     def TableName(self):
         return SIMPLE_HASH_BACKEND_TABLE
@@ -101,13 +106,8 @@ class RedisConnector():
         # in case of exactly once get last id written
         shardId = None
         try:
-            # Raise eception in case of exactly once property is used in RedisCluster
-            if((self.exactlyOnceTableName is not None) and
-                    isinstance(self.connection, RedisClusterConnection)):
-                msg = "Exactly once property is not valid for Redis cluster"
-                raise Exception(msg) from None
             # Get the entry corresponding to shard id in exactly once table
-            elif((self.exactlyOnceTableName is not None) and
+            if((self.exactlyOnceTableName is not None) and
                     isinstance(self.connection, RedisConnection)):
                 shardId = 'shard-%s' % hashtag()
                 res = self.session.execute_command('HGET', self.exactlyOnceTableName, shardId)
@@ -154,18 +154,19 @@ class RedisConnector():
                 else:
                     # pipeline key and field-value mapping to set
                     pipe.hset(newKey, mapping=d_val)
-            
-            pipe.execute()
+                    
+                # make entry for exactly once. In case of Redis cluster exception will be raised already
+                if((self.exactlyOnceTableName is not None) and
+                        isinstance(self.connection, RedisConnection)):
+                    l_exact_once_val = {shardId : lastStreamId}
+                    pipe.hset(self.exactlyOnceTableName, mapping=l_exact_once_val)
 
-            # make entry for exactly once. In case of Redis cluster exception will be raised already
-            if((self.exactlyOnceTableName is not None) and
-                    isinstance(self.connection, RedisConnection)):
-                # error handling is not done as once entry is created update will return 0 
-                res = self.session.execute_command('HSET', self.exactlyOnceTableName, shardId, lastStreamId)
+            #execute pipeline ommands
+            pipe.execute()
 
         except Exception as e:
             self.session.close()
-            self.session = None     # # next time we will reconnect to the database
+            self.session = None             # next time we will reconnect to the database
             self.exactlyOnceLastId = None
             self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
             msg = "Got exception when writing to DB, Exception : {}".format(e)

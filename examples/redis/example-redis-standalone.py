@@ -4,8 +4,7 @@ from rgsync.Connectors import RedisConnector, RedisConnection, RedisClusterConne
 '''
 Create Redis Connection
 '''
-cnodes = [{"host": "127.0.0.1", "port": "8001"}, {"host": "127.0.0.1", "port": "8002"}, {"host": "127.0.0.1", "port": "8003"}]
-r_conn = RedisClusterConnection(host=None, port=None, cluster_nodes=cnodes)
+r_conn = RedisConnection(host='127.0.0.1', port=9001)
 
 
 '''
