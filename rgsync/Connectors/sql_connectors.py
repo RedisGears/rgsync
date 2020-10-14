@@ -162,6 +162,7 @@ class BaseSqlConnector():
                 if self.exactlyOnceTableName is not None:
                     self.conn.execute(self.sqlText(self.exactlyOnceQuery), {'id':shardId, 'val':lastStreamId})
             trans.commit()
+            return lastStreamId
         except Exception as e:
             try:
                 trans.rollback()

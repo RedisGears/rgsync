@@ -141,6 +141,8 @@ class CqlConnector:
                 if self.exactlyOnceTableName is not None:
                     stmt = self.session.prepare(self.exactlyOnceQuery)
                     self.session.execute(stmt, {'id':shardId, 'val':lastStreamId})
+
+            return lastStreamId
         except Exception as e:
             self.session = None # next time we will reconnect to the database
             self.exactlyOnceLastId = None

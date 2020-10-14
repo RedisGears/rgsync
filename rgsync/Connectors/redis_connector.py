@@ -164,6 +164,8 @@ class RedisConnector():
             #execute pipeline ommands
             pipe.execute()
 
+            return lastStreamId
+
         except Exception as e:
             self.session.close()
             self.session = None             # next time we will reconnect to the database

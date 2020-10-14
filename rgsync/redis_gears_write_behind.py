@@ -2,8 +2,13 @@ from redisgears import executeCommand as execute
 from rgsync.common import *
 import json
 import uuid
+import asyncio
 
 ackExpireSeconds = 3600
+
+LastStreamID = None
+
+Blocked = []
 
 def SafeDeleteKey(key):
     '''
@@ -157,6 +162,7 @@ def UnregisterOldVersions(name, version):
 
 def CreateAddToStreamFunction(self):
     def func(r):
+        global LastStreamID
         data = []
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
@@ -177,7 +183,7 @@ def CreateAddToStreamFunction(self):
                         WriteBehindLog(msg)
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
-        execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
+        LastStreamID = execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
 def CreateWriteDataFunction(connector):
@@ -189,7 +195,13 @@ def CreateWriteDataFunction(connector):
             if uuid is not None and uuid != '':
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
-        connector.WriteData(data)
+        lastStreamId = connector.WriteData(data)
+        while len(Blocked) > 0:
+            if Blocked[0].matchedSteamId <= lastStreamId:
+                Blocked[0].UnBlock()
+                Blocked.pop(0)
+            else:
+                break
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
@@ -306,9 +318,41 @@ def WriteNoReplicate(r):
         raise Exception(msg)
     return False
 
+class WaitForDataToBeWriten():
+    def __init__(self, matchedSteamId):
+        self.matchedSteamId = matchedSteamId
+
+    def __await__(self):
+        self.f = asyncio.get_running_loop().create_future()
+        Blocked.append(self)
+        yield from self.f
+
+    def UnBlock(self):
+        if not self.f:
+            raise Exception('Object was never blocked')
+        async def setFutureRes():
+            self.f.set_result(self.matchedSteamId)
+        asyncio.run_coroutine_threadsafe(setFutureRes(), self.f.get_loop())
+
+
+def CreateWriteThroughCommand(keysPrefix):
+    def WriteThroughCommnad(r):
+        global LastStreamID
+        if not r[1].startswith(keysPrefix):
+            raise Exception('Key prefix not matches write through definition')
+        LastStreamID = None
+        res = execute('hset', *r[1:])
+        matchedSteamId = LastStreamID
+        async def ReplyWhenDone():
+            await WaitForDataToBeWriten(matchedSteamId)
+            return res
+        return ReplyWhenDone()
+    return WriteThroughCommnad
+
 class RGWriteBehind(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, eventTypes=['hset', 'hmset', 'del', 'change']):
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, eventTypes=['hset', 'hmset', 'del', 'change'],
+                 writeThroughTriggerName='WriteThrough'):
         '''
         Register a write behind execution to redis gears
 
@@ -407,6 +451,17 @@ class RGWriteBehind(RGWriteBase):
                  duration=duration,
                  onFailedPolicy="retry",
                  onFailedRetryInterval=onFailedRetryInterval)
+
+        ## create the execution for write through
+        writeThroughCommand = '%s.%s' % (name, writeThroughTriggerName)
+        descJson = {
+            'name':'%s trigger' % writeThroughCommand,
+            'version':version,
+            'desc':'trigger write through using %s command' % writeThroughCommand,
+        }
+        GB('CommandReader', desc=json.dumps(descJson)).\
+        map(CreateWriteThroughCommand(keysPrefix)).\
+        register(trigger=writeThroughCommand, mode='sync')
 
 class RGWriteThrough(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):

@@ -22,3 +22,4 @@ class SimpleHashConnector():
             res = execute('hset', newKey, *sum(d, []))
             if 'ERR' in str(res):
                 raise Exception(res)
+            return streamId
