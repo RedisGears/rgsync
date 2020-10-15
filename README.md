@@ -16,7 +16,7 @@ A _Write Behind_ and _Write Through_ Recipe for [RedisGears](https://github.com/
 The following is a RedisGears recipe that shows how to use the _Write Behind_ pattern to map data from Redis Hashes to MySQL tables. The recipe maps all Redis Hashes with the prefix `person:<id>` to the MySQL table `persons`, with `<id>` being the primary key and mapped to the `person_id` column. Similarly, it maps all Hashes with the prefix `car:<id>` to the `cars` table.
 
 ```python
-from rgsync import RGWriteBehind
+from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import MySqlConnector, MySqlConnection
 
 '''
@@ -26,10 +26,8 @@ connection = MySqlConnection('demouser', 'Password123!', 'localhost:3306/test')
 
 '''
 Create MySQL persons connector
-persons - MySQL table to put the data
-person_id - primary key
 '''
-personConnector = MySqlConnector(connection, 'persons', 'person_id')
+personsConnector = MySqlConnector(connection, 'persons', 'person_id')
 
 personsMappings = {
 	'first_name':'first',
@@ -37,21 +35,19 @@ personsMappings = {
 	'age':'age'
 }
 
-RGWriteBehind(GB, keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind', version='99.99.99')
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
 '''
-Create MySQL car connector
-cars - MySQL table to put the data
-car_id - primary key
+Create MySQL cars connector
 '''
-carConnector = MySqlConnector(connection, 'cars', 'car_id')
+carsConnector = MySqlConnector(connection, 'cars', 'car_id')
 
 carsMappings = {
 	'id':'id',
 	'color':'color'
 }
 
-RGWriteBehind(GB, keysPrefix='cars', mappings=carsMappings, connector=carsConnector, name='CarsWriteBehind', version='99.99.99')
+RGWriteBehind(GB, keysPrefix='car', mappings=carsMappings, connector=carsConnector, name='CarsWriteBehind', version='99.99.99')
 ```
 
 ## Running the recipe
