@@ -21,7 +21,7 @@ def Connect():
 class testWriteBehind:
     def __init__(self):
         self.env = Env()
-        f = open('./example.py', 'rt')
+        f = open('./examples/mysql/example.py', 'rt')
         script = f.read()
         f.close()
         self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'pymysql')
