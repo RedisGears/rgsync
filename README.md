@@ -53,10 +53,10 @@ RGWriteBehind(GB, keysPrefix='car', mappings=carsMappings, connector=carsConnect
 ```
 
 ## Running the recipe
-You can use [this utility](https://github.com/RedisGears/gears-cli) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](example.py) and install its dependencies with the following command:
+You can use [this utility](https://github.com/RedisGears/gears-cli) to send a RedisGears recipe for execution. For example, run this repository's [example.py recipe](examples/mysql/example.py) and install its dependencies with the following command:
 
 ```bash
-gears-cli --host <host> --port <post> --password <password> run example.py REQUIREMENTS git+https://github.com/RedisGears/rgsync.git PyMySQL
+gears-cli --host <host> --port <post> --password <password> run example.py REQUIREMENTS rgsync PyMySQL cryptography
 ```
 
 ## Overview of the recipe's operation
