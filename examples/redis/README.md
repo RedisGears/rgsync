@@ -17,6 +17,7 @@ NOTE:	Exactly once property is not valid for Redis cluster, because Redis cluste
 # Test
 Using redis-cli perform:
 ```bash
+redis-cli
 127.0.0.1:6379> hset key:1 bin1 1 bin2 2 bin3 3 bin4 4 bin5 5
 (integer) 5
 ```
