@@ -2,6 +2,8 @@
 [![CircleCI](https://circleci.com/gh/RedisGears/rgsync/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGears/rgsync/tree/master)
 [![PyPI version](https://badge.fury.io/py/rgsync.svg)](https://badge.fury.io/py/rgsync)
 [![Known Vulnerabilities](https://snyk.io/test/github/RedisGears/rgsync/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/RedisGears/rgsync?targetFile=requirements.txt)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/RedisGears/rgsync.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGears/rgsync/context:python)
+
 
 # RGSync
 [![Forum](https://img.shields.io/badge/Forum-RedisGears-blue)](https://forum.redislabs.com/c/modules/redisgears)
