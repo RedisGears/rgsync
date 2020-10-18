@@ -1,6 +1,7 @@
 [![license](https://img.shields.io/github/license/RedisGears/rgsync.svg)](https://github.com/RedisGears/rgsync)
 [![CircleCI](https://circleci.com/gh/RedisGears/rgsync/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGears/rgsync/tree/master)
 [![PyPI version](https://badge.fury.io/py/rgsync.svg)](https://badge.fury.io/py/rgsync)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGears/rgsync.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGears/rgsync/alerts/)
 [![Known Vulnerabilities](https://snyk.io/test/github/RedisGears/rgsync/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/RedisGears/rgsync?targetFile=requirements.txt)
 
 # RGSync
