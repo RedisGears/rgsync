@@ -27,7 +27,8 @@ gears-cli run --host <host> --port <port> --password <password> example.py --req
 # Test
 Using redis-cli perform:
 ```bash
-hset person:1 first_name foo last_name bar age 20
+redis-cli
+> hset person:1 first_name foo last_name bar age 20
 ```
 
 Make sure data reached MySql server:
