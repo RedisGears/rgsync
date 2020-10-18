@@ -1,5 +1,5 @@
 # Set up Redis Server
-To setup a Redis server to replicate data to, start another Redis server on different port (assuming you have Redis install on the machine)
+To setup a Redis server to replicate data to, start another Redis server on different port (assuming you have Redis installed on the machine)
 ```bash
 redis-server --port 9001
 ```
