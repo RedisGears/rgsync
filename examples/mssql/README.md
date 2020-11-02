@@ -11,7 +11,7 @@ Docker compatible [*nix OS](https://en.wikipedia.org/wiki/Unix-like) and Docker 
 ---
 **NOTE**
 
-The above script will create a 3-node Redis Enterprise cluster in docker conatiners on rg-net network, [Install RedisGears dependencies](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-1-install-redisgears-dependencies), [Install RedisGears module](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-2-install-the-redisgears-module), [Install MS ODBC driver for MSSQL](https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15#ubuntu17) and [Create a Redis Enterprise database with RedisGears module enabled and verify the installation](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-3-create-a-database-and-verify-the-installation).
+The above script will create a 3-node Redis Enterprise cluster in docker containers on rg-net network, [Install RedisGears dependencies](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-1-install-redisgears-dependencies), [Install RedisGears module](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-2-install-the-redisgears-module), [Install MS ODBC driver for MSSQL](https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15#ubuntu17) and [Create a Redis Enterprise database with RedisGears module enabled and verify the installation](https://docs.redislabs.com/latest/modules/redisgears/installing-redisgears/#step-3-create-a-database-and-verify-the-installation).
 
 ---
 
