@@ -192,6 +192,23 @@ class BaseSqlConnector():
             WriteBehindLog(msg)
             raise Exception(msg) from None
 
+class MySqlConnector(BaseSqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
+    def PrepereQueries(self, mappings):
+        def GetUpdateQuery(tableName, mappings, pk):
+            query = 'REPLACE INTO %s' % tableName
+            values = [val for kk, val in mappings.items() if not kk.startswith('_')]
+            values = [self.pk] + values
+            values.sort()
+            query = '%s(%s) values(%s)' % (query, ','.join(values), ','.join([':%s' % a for a in values]))
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+            
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
