@@ -6,6 +6,12 @@ Docker compatible [*nix OS](https://en.wikipedia.org/wiki/Unix-like) and Docker 
 wget -c https://github.com/RedisGears/rgsync/archive/master.zip && unzip master.zip "rgsync-master/examples/mssql/*" && rm master.zip && mv rgsync-master rgsync && cd rgsync/examples/mssql && chmod a+x *.sh
 ```
 
+# Redis OSS Users
+Assuming you have RedisGears up and running (see [Quick Start](https://oss.redislabs.com/redisgears/quickstart.html)). Please continue from [Setup MSSQL 2017 database in docker](#setup-mssql-2017-database-in-docker).
+
+
+# Redis Enterprise Users
+
 ## Setup Redis Enterprise cluster and database in docker
 <br>Execute [setupAndcreate_redb.sh](setupAndcreate_redb.sh)</br>
 ```bash
@@ -19,6 +25,7 @@ The above script will create a 3-node Redis Enterprise cluster in docker contain
 ---
 
 ## Setup MSSQL 2017 database in docker
+
 <br>Execute [setup_mssql.sh](setup_mssql.sh)</br>
 ```bash
 > ./setup_mssql.sh
@@ -42,7 +49,7 @@ e.g.
 OK
 ```
 
-Check the database log file:
+Check the database log file (<b>`Doesn't apply to Redis OSS users`</b>):
 ```bash
 > sudo docker exec -it re-node1 bash -c "tail -f /var/opt/redislabs/log/redis-1.log"
 3537:M 02 Nov 2020 17:50:44.339 * <module> GEARS: WRITE_BEHIND - Connect: connecting ConnectionStr=mssql+pyodbc://sa:Redis@123@172.18.0.5:1433/RedisGearsTest?driver=ODBC+Driver+17+for+SQL+Server
