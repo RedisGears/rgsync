@@ -1,12 +1,15 @@
 ### Prerequisites
 
 Docker compatible [*nix OS](https://en.wikipedia.org/wiki/Unix-like) and Docker installed.
-<br>Download this folder and change the *.sh file permissions to 755 i.e. ``` chmod 755 *.sh ```</br>
+<br>Download this folder and give execute permission to the scripts i.e.</br>
+```bash
+wget -c https://github.com/RedisGears/rgsync/archive/master.zip && unzip master.zip "rgsync-master/examples/mssql/*" && rm master.zip && mv rgsync-master rgsync && cd rgsync/examples/mssql && chmod a+x *.sh
+```
 
 ## Setup Redis Enterprise cluster and database in docker
 <br>Execute [setupAndcreate_redb.sh](setupAndcreate_redb.sh)</br>
 ```bash
-./setupAndcreate_redb.sh
+> ./setupAndcreate_redb.sh
 ```
 ---
 **NOTE**
@@ -18,7 +21,7 @@ The above script will create a 3-node Redis Enterprise cluster in docker contain
 ## Setup MSSQL 2017 database in docker
 <br>Execute [setup_mssql.sh](setup_mssql.sh)</br>
 ```bash
-./setup_mssql.sh
+> ./setup_mssql.sh
 ```
 ---
 **NOTE**
