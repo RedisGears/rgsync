@@ -38,7 +38,7 @@ The above script will start a [MSSQL 2017 docker](https://hub.docker.com/layers/
 ---
 
 # Running the recipe
-Please use <a href="https://github.com/RedisGears/gears-cli">gears-cli</a> to send a RedisGears Write-Behind and/or Write-Through recipe for execution. For example, run the sample [MsSql](example.py) recipe (contains the mapping of MsSql tables with Redis Hashes and RedisGears registrations) and install its dependencies with the following command:
+Please use <a href="https://github.com/RedisGears/gears-cli">gears-cli</a> to send a RedisGears Write-Behind and/or Write-Through recipe for execution. For example, run the sample [MsSql](example.py) recipe (contains the mapping of MsSql tables with Redis Hashes and RedisGears registrations) and install its dependencies with the following command (<b>Redis OSS users, please update the server value to localhost in [example.py](example.py) prior to running this recipe</b>):
 
 ```bash
 gears-cli run --host <host> --port <port> --password <password> example.py --requirements requirements.txt
