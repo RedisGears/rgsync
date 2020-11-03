@@ -3,11 +3,14 @@ from rgsync import RGWriteBehind, RGWriteThrough
 
 '''
 Create MSSQL connection object
+MsSqlConnection('<user>', '<password>', '<db>', '<server>', '<db_port>', '<driver>')
+********* Redis OSS users: please use localhost for <server> value *********
 '''
 connection = MsSqlConnection('sa', 'Redis@123', 'RedisGearsTest', '172.18.0.5', '1433', 'ODBC+Driver+17+for+SQL+Server')
 
 '''
 Create MSSQL emp connector
+MsSqlConnector(<connection>, '<table_name>', '<primary_key>')
 '''
 empConnector = MsSqlConnector(connection, 'emp', 'empno')
 
