@@ -33,7 +33,7 @@ The above script will create a 3-node Redis Enterprise cluster in docker contain
 ---
 **NOTE**
 
-The above script will start a [MSSQL 2017 docker](https://hub.docker.com/layers/microsoft/mssql-server-linux/2017-latest/images/sha256-314918ddaedfedc0345d3191546d800bd7f28bae180541c9b8b45776d322c8c2?context=explore) instance on rg-net network, create RedisGearsTest database and create emp table.
+The above script will start a [MSSQL 2017 docker](https://hub.docker.com/layers/microsoft/mssql-server-linux/2017-latest/images/sha256-314918ddaedfedc0345d3191546d800bd7f28bae180541c9b8b45776d322c8c2?context=explore) instance, create RedisGearsTest database and emp table.
 
 ---
 
