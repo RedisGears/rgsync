@@ -1,4 +1,4 @@
-### Prerequisites
+# Prerequisites
 
 Docker compatible [*nix OS](https://en.wikipedia.org/wiki/Unix-like) and Docker installed.
 <br>Download this folder and give execute permission to the scripts i.e.</br>
@@ -6,8 +6,21 @@ Docker compatible [*nix OS](https://en.wikipedia.org/wiki/Unix-like) and Docker 
 wget -c https://github.com/RedisGears/rgsync/archive/master.zip && unzip master.zip "rgsync-master/examples/mssql/*" && rm master.zip && mv rgsync-master rgsync && cd rgsync/examples/mssql && chmod a+x *.sh
 ```
 
+## Setup MSSQL 2017 database in docker
+
+<br>Execute [setup_mssql.sh](setup_mssql.sh)</br>
+```bash
+> ./setup_mssql.sh
+```
+---
+**NOTE**
+
+The above script will start a [MSSQL 2017 docker](https://hub.docker.com/layers/microsoft/mssql-server-linux/2017-latest/images/sha256-314918ddaedfedc0345d3191546d800bd7f28bae180541c9b8b45776d322c8c2?context=explore) instance, create RedisGearsTest database and emp table.
+
+---
+
 # Redis OSS Users
-Assuming you have RedisGears up and running (see [Quick Start](https://oss.redislabs.com/redisgears/quickstart.html)). Please continue from [Setup MSSQL 2017 database in docker](#setup-mssql-2017-database-in-docker).
+Assuming you have RedisGears up and running (see [Quick Start](https://oss.redislabs.com/redisgears/quickstart.html)). Please continue from [Running the recipe](#running-the-recipe).
 
 
 # Redis Enterprise Users
@@ -24,19 +37,6 @@ The above script will create a 3-node Redis Enterprise cluster in docker contain
 
 ---
 
-## Setup MSSQL 2017 database in docker
-
-<br>Execute [setup_mssql.sh](setup_mssql.sh)</br>
-```bash
-> ./setup_mssql.sh
-```
----
-**NOTE**
-
-The above script will start a [MSSQL 2017 docker](https://hub.docker.com/layers/microsoft/mssql-server-linux/2017-latest/images/sha256-314918ddaedfedc0345d3191546d800bd7f28bae180541c9b8b45776d322c8c2?context=explore) instance, create RedisGearsTest database and emp table.
-
----
-
 # Running the recipe
 Please use <a href="https://github.com/RedisGears/gears-cli">gears-cli</a> to send a RedisGears Write-Behind and/or Write-Through recipe for execution. For example, run the sample [MsSql](example.py) recipe (contains the mapping of MsSql tables with Redis Hashes and RedisGears registrations) and install its dependencies with the following command (<b>Redis OSS users, please update the server value to localhost in [example.py](example.py) prior to running this recipe</b>):
 
@@ -49,7 +49,7 @@ e.g.
 OK
 ```
 
-Check the database log file (<b>`Doesn't apply to Redis OSS users`</b>):
+Check the database log file (<b>`Should also be visible for OSS users in the console.`</b>):
 ```bash
 > sudo docker exec -it re-node1 bash -c "tail -f /var/opt/redislabs/log/redis-1.log"
 3537:M 02 Nov 2020 17:50:44.339 * <module> GEARS: WRITE_BEHIND - Connect: connecting ConnectionStr=mssql+pyodbc://sa:Redis@123@172.18.0.5:1433/RedisGearsTest?driver=ODBC+Driver+17+for+SQL+Server
