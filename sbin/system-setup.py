@@ -21,7 +21,7 @@ class RGSyncSetup(paella.Setup):
         self.setup_pip()
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
-        
+
         self.pip_install("-r %s/paella/requirements.txt" % READIES)
         self.install("git zip unzip")
 
@@ -38,7 +38,7 @@ class RGSyncSetup(paella.Setup):
     def fedora(self):
         pass
 
-    def macosx(self):
+    def macos(self):
         self.install_gnu_utils()
 
     def common_last(self):
