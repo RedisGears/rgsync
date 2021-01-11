@@ -101,18 +101,18 @@ on-any-branch: &on-any-branch
       only: /.*/
 
 on-master-and-version-tags: &on-master-and-version-tags
-  filters:
-    branches:
-      only:
-        - master
-    tags:
-      only: /^v[0-9].*/
-# (switch to the following when debugging)
 #  filters:
 #    branches:
-#      only: /.*/
+#      only:
+#        - master
 #    tags:
-#      only: /.*/
+#      only: /^v[0-9].*/
+# (switch to the following when debugging)
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
 
 platform-build-defs: &platform-build-defs
   requires:
