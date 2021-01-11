@@ -18,7 +18,7 @@ wget -O gears.zip $S3_URL/redisgears.${PLATFORM}.${VERSION}.zip
 unzip gears.zip
 mv redisgears.so /var/opt/redislabs/modules/rg/
 
-wget -O deps.tgz $S3_URL/redisgears-dependencies.${PLATFORM}.${VERSION}.tgz
+wget -O deps.tgz $S3_URL/redisgears-python.${PLATFORM}.${VERSION}.tgz
 tar -xzf deps.tgz -C /var/opt/redislabs/modules/rg
 
 cd $HERE
