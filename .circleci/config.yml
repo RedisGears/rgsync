@@ -61,7 +61,7 @@ jobs:
             /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
       - run:
           name: Tests
-          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so
+          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so"
 
   platform-build:
     parameters:
