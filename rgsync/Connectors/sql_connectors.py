@@ -58,6 +58,24 @@ class OracleSqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'oracle://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
+class MsSqlConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db, server, port, driver):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+        self._server=server
+        self._port=port
+        self._driver=driver
+    @property
+    def server(self):
+        return self._server() if callable(self._server) else self._server
+    @property
+    def port(self):
+        return self._port() if callable(self._port) else self._port
+    @property
+    def driver(self):
+        return self._driver() if callable(self._driver) else self._driver
+    def _getConnectionStr(self):
+        return 'mssql+pyodbc://{user}:{password}@{server}:{port}/{db}?driver={driver}'.format(user=self.user, password=self.passwd, db=self.db, server=self.server, port=self.port, driver=self.driver)
+    
 class SnowflakeSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db, account):
         BaseSqlConnection.__init__(self, user, passwd, db)
@@ -190,7 +208,7 @@ class MySqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
-
+            
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -212,7 +230,24 @@ class OracleSqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
-
+            
+class MsSqlConnector(BaseSqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+    def PrepereQueries(self, mappings):
+        values = [val for kk, val in mappings.items() if not kk.startswith('_')]
+        values_with_pkey = [self.pk] + values
+        def GetUpdateQuery(tableName, mappings, pk):
+            merge_into = "MERGE %s AS Target USING (VALUES (:%s)) AS Source (key1) ON (Target.%s = Source.key1)" % (tableName, pk, pk)
+            not_matched = "WHEN NOT MATCHED BY TARGET THEN INSERT (%s) VALUES (%s)" % (','.join(values_with_pkey), ','.join([':%s' % a for a in values_with_pkey]))
+            matched = "WHEN MATCHED THEN UPDATE SET %s" % (','.join(['Target.%s=:%s' % (a,a) for a in values]))
+            query = "%s %s %s;" % (merge_into, not_matched, matched)
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+            
 class SnowflakeSqlConnector(OracleSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         OracleSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
