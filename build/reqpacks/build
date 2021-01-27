@@ -1,9 +1,12 @@
 #!/bin/bash
 
-set -xe
+[[ $V == 1 || $VERBOSE == 1 ]] && set -x
+[[ $IGNERR == 1 ]] || set -e
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 ROOT=$(cd $HERE/../..; pwd)
+export READIES=$ROOT/deps/readies
+. $READIES/shibumi/defs
 
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
