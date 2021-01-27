@@ -29,6 +29,7 @@ class ReqPacksSetup(paella.Setup):
         self.install("build-essential")
         self.install("python3-psutil")
         self.install("libsqlite3-dev")
+        self.install("unixodbc-dev")
 
     def redhat_compat(self):
         self.run("%s/bin/enable-utf8" % READIES)
@@ -36,6 +37,9 @@ class ReqPacksSetup(paella.Setup):
         self.group_install("'Development Tools'")
         self.install("redhat-lsb-core")
         self.install("libsqlite3x-devel")
+        self.install("gcc")
+        self.install("gcc-c++")
+        self.install("unixODBC-devel")
 
     def fedora(self):
         self.group_install("'Development Tools'")
