@@ -128,16 +128,20 @@ workflows:
       - platform-build:
           name: build-bionic
           platform: bionic
+          context: common
           <<: *platform-build-defs
       - platform-build:
           name: build-centos7
           platform: centos7
+          context: common
           <<: *platform-build-defs
       - platform-build:
           name: build-xenial
           platform: xenial
+          context: common
           <<: *platform-build-defs
       - deploy-artifacts:
+          context: common
           <<: *after-platform-builds
           <<: *on-any-branch
 
