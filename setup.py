@@ -9,7 +9,7 @@ requirements = list(map(str.strip, open("requirements.txt").readlines()))
     
 setup(
     name='rgsync',
-    version='1.0.1',  
+    version='1.0.2',  
     description='RedisGears synchronization recipe',
     long_description=read_all("README.md"),
     long_description_content_type='text/markdown',
