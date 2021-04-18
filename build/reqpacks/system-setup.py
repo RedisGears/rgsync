@@ -18,31 +18,25 @@ class ReqPacksSetup(paella.Setup):
 
     def common_first(self):
         self.install_downloaders()
-        self.setup_pip()
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.pip_install("-r %s/paella/requirements.txt" % READIES)
         self.install("git zip unzip")
+        self.run("%s/bin/enable-utf8" % READIES)
 
     def debian_compat(self):
-        self.install("build-essential")
-        self.install("python3-psutil")
+        self.run("%s/bin/getgcc" % READIES) 
         self.install("libsqlite3-dev")
         self.install("unixodbc-dev")
 
     def redhat_compat(self):
-        self.run("%s/bin/enable-utf8" % READIES)
-
-        self.group_install("'Development Tools'")
+        self.run("%s/bin/getgcc" % READIES) 
         self.install("redhat-lsb-core")
         self.install("libsqlite3x-devel")
-        self.install("gcc")
-        self.install("gcc-c++")
         self.install("unixODBC-devel")
 
     def fedora(self):
-        self.group_install("'Development Tools'")
+        self.run("%s/bin/getgcc" % READIES) 
 
     def macos(self):
         self.install_gnu_utils()

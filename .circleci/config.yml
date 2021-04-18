@@ -87,11 +87,6 @@ jobs:
           name: Deploy artifacts to S3
           command: ./sbin/deploy-artifacts
 
-after-platform-builds: &after-platform-builds
-  requires:
-    - build-centos7
-    - build-bionic
-    - build-xenial
 
 on-any-branch: &on-any-branch
   filters:
@@ -117,7 +112,6 @@ on-master-and-version-tags: &on-master-and-version-tags
 platform-build-defs: &platform-build-defs
   requires:
     - build-and-test
-  <<: *on-master-and-version-tags
 
 workflows:
   version: 2
@@ -126,24 +120,19 @@ workflows:
       - build-and-test:
           <<: *on-any-branch
       - platform-build:
-          name: build-bionic
-          platform: bionic
+          name: build
+          matrix:
+            parameters:
+              platform: [bionic, xenial, centos7] 
           context: common
           <<: *platform-build-defs
-      - platform-build:
-          name: build-centos7
-          platform: centos7
-          context: common
-          <<: *platform-build-defs
-      - platform-build:
-          name: build-xenial
-          platform: xenial
-          context: common
-          <<: *platform-build-defs
+          #@@ <<: *on-master-and-version-tags
+          <<: *on-any-branch
       - deploy-artifacts:
           context: common
-          <<: *after-platform-builds
-          <<: *on-any-branch
+          requires:
+            - platform-build
+          <<: *on-master-and-version-tags
 
   nightly:
     triggers:
