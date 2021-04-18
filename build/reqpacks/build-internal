@@ -5,6 +5,7 @@ set -xe
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies
+. $READIES/shibumi/defs
 
 . $HERE/env
 [[ -z $RGSYNC_VERSION ]] && { echo "RGSYNC_VERSION is not defined. Aborting"; exit 1; }
