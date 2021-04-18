@@ -144,8 +144,7 @@ workflows:
             parameters:
               platform: [bionic, xenial, centos7] 
           context: common
-          #@@ <<: *on-integ-branch
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
       - deploy-artifacts:
           context: common
           requires:
