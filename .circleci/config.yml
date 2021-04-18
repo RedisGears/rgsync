@@ -75,7 +75,7 @@ jobs:
  
   deploy-artifacts:
     docker:
-      - image: 'cimg/base:2020.01'
+      - image: 'cimg/base:2021.04'
     steps:
       - checkout
       - attach_workspace:
@@ -95,44 +95,62 @@ on-any-branch: &on-any-branch
     tags:
       only: /.*/
 
-on-master-and-version-tags: &on-master-and-version-tags
+never: &never
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      ignore: /.*/
+
+on-integ-branch: &on-integ-branch
   filters:
     branches:
       only:
         - master
+        - /^\d+\.\d+.*$/
+        - /^feature-.*$/
+    tags:
+      ignore: /.*/
+
+not-on-integ-branch: &not-on-integ-branch
+  filters:
+    branches:
+      ignore:
+        - master
+        - /^\d+\.\d+.*$/
+        - /^feature-.*$/
+    tags:
+      ignore: /.*/
+
+on-integ-and-version-tags: &on-integ-and-version-tags
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       only: /^v[0-9].*/
-# (switch to the following when debugging)
-#  filters:
-#    branches:
-#      only: /.*/
-#    tags:
-#      only: /.*/
 
-platform-build-defs: &platform-build-defs
-  requires:
-    - build-and-test
 
 workflows:
   version: 2
   commit:
     jobs:
       - build-and-test:
-          <<: *on-any-branch
+          <<: *not-on-integ-branch
       - platform-build:
-          name: build
           matrix:
             parameters:
               platform: [bionic, xenial, centos7] 
           context: common
-          <<: *platform-build-defs
-          #@@ <<: *on-master-and-version-tags
+          #@@ <<: *on-integ-branch
           <<: *on-any-branch
       - deploy-artifacts:
           context: common
           requires:
             - platform-build
-          <<: *on-master-and-version-tags
+          <<: *on-integ-and-version-tags
 
   nightly:
     triggers:

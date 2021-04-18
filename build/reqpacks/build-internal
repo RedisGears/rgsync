@@ -1,16 +1,17 @@
 #!/bin/bash
 
-set -xe
+set -e
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-ROOT=$(cd $HERE/../..; pwd)
+ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies
 
 . $HERE/env
 [[ -z $RGSYNC_VERSION ]] && { echo "RGSYNC_VERSION is not defined. Aborting"; exit 1; }
 PLATFORM=`$READIES/bin/platform -t`
 
-. $READIES/bin/enable-utf8
+$READIES/bin/enable-utf8
+source `get_porfile_d`/utf8.sh
 
 touch $HERE/none.py
 python3 -m gears_cli run --requirements $HERE/requirements.final $HERE/none.py
