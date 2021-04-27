@@ -117,6 +117,7 @@ class BaseSqlConnector():
             WriteBehindLog('Warning, got an empty batch')
             return
         query = None
+        shardId = 'shard-%s' % hashtag()
 
         try:
             if not self.conn:
@@ -124,8 +125,7 @@ class BaseSqlConnector():
                 self.sqlText = text
                 self.conn = self.connection.Connect()
                 if self.exactlyOnceTableName is not None:
-                    shardId = 'shard-%s' % hashtag()
-                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName, {'id':shardId}))
+                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName), {'id':shardId})
                     res = result.first()
                     if res is not None:
                         self.exactlyOnceLastId = str(res['val'])
@@ -207,7 +207,7 @@ class MySqlConnector(BaseSqlConnector):
         self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
-            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val': 'val'}, 'id')
             
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
