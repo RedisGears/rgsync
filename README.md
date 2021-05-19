@@ -186,3 +186,14 @@ Furthermore, Redis' AOF should be used alongside replication to protect against 
 
 ## Monitoring the RedisGears function registrations
 Use [this](https://github.com/RedisGears/RedisGearsMonitor) to monitor RedisGear's function registrations.
+
+## Developing
+
+1. Create a virtualenv to manage your python dependencies, and ensure it's active.
+   ```virtualenv -v venv```
+2. Install [pypoetry](https://python-poetry.org/) to manage your dependencies.
+   ```pip install --user poetry```
+3. Install dependencies.
+   ```poetry install```
+
+[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. Running *tox* by itself will run unit tests. Ensure you have a running redis, with the module loaded.
