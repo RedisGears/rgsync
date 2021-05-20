@@ -1,10 +1,12 @@
 #!/bin/bash
 
-mysql -u root -p=password <<-EOF
+# start in mysql 8 this will need to change
+# due to how users are created in mysql 8
+mysql -u root -ppassword -h localhost <<-EOF
+    DROP DATABASE IF EXISTS test;
 	CREATE DATABASE test;
 	CREATE TABLE test.persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));
-	INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('demouser','localhost',PASSWORD('Password123!'),'','','');
-	FLUSH PRIVILEGES;
+    CREATE USER 'demouser'@'localhost' IDENTIFIED BY 'Password123!';
 	GRANT ALL PRIVILEGES ON test.* to demouser@localhost;
 	FLUSH PRIVILEGES;
 	EOF

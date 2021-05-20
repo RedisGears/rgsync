@@ -1,7 +1,0 @@
-#!/bin/bash
-
-mysql -u root -p=password <<-EOF
-    REVOKE ALL PRIVILEGES ON test.* to demouser@localhost;
-    DELETE FROM mysql.user where User='demouser';
-    DROP DATABASE test;
-EOF
