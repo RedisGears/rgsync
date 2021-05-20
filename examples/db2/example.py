@@ -9,7 +9,7 @@ connection = DB2Connection('user', 'pass', 'host[:port]/dbname')
 '''
 Create DB2 emp connector
 '''
-empConnector = MsSqlConnector(connection, 'emp', 'empno')
+empConnector = DB2Connector(connection, 'emp', 'empno')
 
 empMappings = {
         'FirstName':'fname',
