@@ -36,6 +36,7 @@ tox-poetry = "^0.3.0"
 bandit = "^1.7.0"
 vulture = "^2.3"
 tox-docker = "^3.0.0"
+rltest = {git = "https://github.com/RedisLabsModules/RLTest.git", rev = "master"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
