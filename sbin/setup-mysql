@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # start in mysql 8 this will need to change
 # due to how users are created in mysql 8
 mysql -u root -ppassword -h localhost <<-EOF
@@ -9,4 +11,4 @@ mysql -u root -ppassword -h localhost <<-EOF
     CREATE USER 'demouser'@'localhost' IDENTIFIED BY 'Password123!';
 	GRANT ALL PRIVILEGES ON test.* to demouser@localhost;
 	FLUSH PRIVILEGES;
-	EOF
+EOF

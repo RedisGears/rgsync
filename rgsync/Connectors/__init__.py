@@ -9,10 +9,12 @@ __all__ = [
     'MsSqlConnector',
     'MySqlConnector',
     'OracleSqlConnector',
+    'PostgresConnector',
     'SnowflakeSqlConnector',
     'MsSqlConnection',
     'MySqlConnection',
     'OracleSqlConnection',
+    'PostgresConnection',
     'SnowflakeSqlConnection',
 
     'CqlConnector',

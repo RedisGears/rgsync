@@ -39,6 +39,13 @@ class MySqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
+class PostgreSqlConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+
+    def _getConnectionStr(self):
+        return 'postgresql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
+
 class SQLiteConnection(BaseSqlConnection):
     def __init__(self, filePath):
         BaseSqlConnection.__init__(self, None, None, None)
@@ -75,7 +82,7 @@ class MsSqlConnection(BaseSqlConnection):
         return self._driver() if callable(self._driver) else self._driver
     def _getConnectionStr(self):
         return 'mssql+pyodbc://{user}:{password}@{server}:{port}/{db}?driver={driver}'.format(user=self.user, password=self.passwd, db=self.db, server=self.server, port=self.port, driver=self.driver)
-    
+
 class SnowflakeSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db, account):
         BaseSqlConnection.__init__(self, user, passwd, db)
@@ -208,7 +215,13 @@ class MySqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
-            
+
+
+class PostgresConnector(MySqlConnector):
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
+
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -230,7 +243,7 @@ class OracleSqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
-            
+
 class MsSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -247,7 +260,7 @@ class MsSqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
-            
+
 class SnowflakeSqlConnector(OracleSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         OracleSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
