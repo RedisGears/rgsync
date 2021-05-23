@@ -117,7 +117,6 @@ class BaseSqlConnector():
             WriteBehindLog('Warning, got an empty batch')
             return
         query = None
-        shardId = 'shard-%s' % hashtag()
 
         try:
             if not self.conn:
