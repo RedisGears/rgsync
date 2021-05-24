@@ -8,7 +8,7 @@ mysql -u root -ppassword -h localhost <<-EOF
     DROP DATABASE IF EXISTS test;
 	CREATE DATABASE test;
 	CREATE TABLE test.persons (person_id VARCHAR(100) NOT NULL, first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, age INT NOT NULL, PRIMARY KEY (person_id));
-    CREATE USER 'demouser'@'localhost' IDENTIFIED BY 'Password123!';
-	GRANT ALL PRIVILEGES ON test.* to demouser@localhost;
+    CREATE USER 'demouser'@'%' IDENTIFIED BY 'Password123!';
+	GRANT ALL PRIVILEGES ON test.* to 'demouser'@'%';
 	FLUSH PRIVILEGES;
 EOF

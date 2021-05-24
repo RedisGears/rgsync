@@ -2,6 +2,9 @@ from RLTest import Env
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 import time
+import os
+import toml
+
 
 def to_utf(d):
     if isinstance(d, str):
@@ -21,9 +24,17 @@ def Connect():
 class testWriteBehind:
     def __init__(self):
         self.env = Env()
-        f = open('./examples/mysql/example.py', 'rt')
+        f = open('../examples/mysql/example.py', 'rt')
         script = f.read()
         f.close()
+        if os.path.isdir("/build/dist"):  # running inside the docker context
+            ll = toml.load("../pyproject.toml")
+            version = ll['tool']['poetry']['version']
+            rg_req = "/build/dist/rgsync-{}-py3-none-any.whl".format(version)
+        else:
+            rg_req = "rgsync"
+
+        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req)
         self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'pymysql')
 
         self.dbConn = Connect()

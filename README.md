@@ -196,4 +196,4 @@ Use [this](https://github.com/RedisGears/RedisGearsMonitor) to monitor RedisGear
 3. Install dependencies.
    ```poetry install```
 
-[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. Running *tox* by itself will run unit tests. Ensure you have a running redis, with the module loaded.
+[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. The tox setup uses a redis docker, to run rltests against the target.
