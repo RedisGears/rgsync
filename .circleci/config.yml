@@ -40,6 +40,9 @@ commands:
     steps:
       - abort_for_docs
       - abort_for_noci
+      - setup_remote_docker:
+          version: 20.10.2
+          docker_layer_caching: true
       - checkout
 
       - restore_cache: # Download and cache dependencies
