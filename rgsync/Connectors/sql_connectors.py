@@ -1,5 +1,6 @@
 from rgsync.common import *
 from redisgears import getMyHashTag as hashtag
+from collections import OrderedDict
 
 class BaseSqlConnection():
     def __init__(self, user, passwd, db):
@@ -39,7 +40,7 @@ class MySqlConnection(BaseSqlConnection):
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
-class PostgreSqlConnection(BaseSqlConnection):
+class PostgresConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db):
         BaseSqlConnection.__init__(self, user, passwd, db)
 
@@ -218,8 +219,35 @@ class MySqlConnector(BaseSqlConnector):
 
 
 class PostgresConnector(MySqlConnector):
+
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
+    def PrepereQueries(self, mappings):
+        def GetUpdateQuery(tableName, mappings, pk):
+
+            # OrderedDicts mean the same results each time
+            ordered_mappings = OrderedDict(mappings)
+            cols = ','.join(ordered_mappings.values())
+            values = [":{}".format(val) for kk, val in ordered_mappings.items() if not kk.startswith('_')]
+            values = list(values) + [":" + self.pk]
+
+            # prepare statement
+            value_stmt = ','.join(v for v in values)
+            update_stmts = ["{}=excluded.{}".format(v, v) for v in ordered_mappings.values() if not v.startswith('_')]
+            query = """INSERT INTO {} ({},{})
+            VALUES ({})
+            ON CONFLICT({}) DO UPDATE
+            SET
+            {}""".format(tableName, cols, self.pk,
+                    value_stmt,
+                    self.pk,
+                    ', '.join(update_stmts))
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
 
 class SQLiteConnector(MySqlConnector):

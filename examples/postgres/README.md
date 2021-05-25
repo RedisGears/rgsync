@@ -16,6 +16,8 @@ Assuming you have RedisGears up and running (see [Quick Start](https://oss.redis
 gears-cli run --host <host> --port <port> --password <password> example.py --requirements requirements.txt
 ```
 
+As rgsync uses the psycopyg2 driver under the covers, please ensure you have the postgresql client libraries (i.e libpq-dev), or the appropriate binary drivers for your operating system installed.
+
 # Test
 Using redis-cli perform:
 ```bash

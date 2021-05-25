@@ -4,7 +4,7 @@ from rgsync.Connectors import PostgresConnector, PostgresConnection
 '''
 Create Postgres connection object
 '''
-connection = PostgresConnection('demouser', 'Password123!', 'localhost:5432/test')
+connection = PostgresConnection('demo', 'Password123!', 'localhost:5432/test')
 
 '''
 Create Postgres persons connector

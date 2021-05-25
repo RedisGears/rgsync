@@ -1,163 +1,132 @@
 version: 2.1
 
-commands: 
-  setup-executor:
+commands:
+
+  abort_for_docs:
     steps:
       - run:
-          name: Setup executor
+          name: Avoid tests for docs
           command: |
-            apt-get -qq update
-            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
-      - setup_remote_docker:
-          docker_layer_caching: true
+            if [[ $CIRCLE_BRANCH == *docs ]]; then
+              echo "Identifies as documents PR, no testing required"
+              circleci step halt
+            fi
 
-  setup-automation:
+  abort_for_noci:
     steps:
       - run:
-          name: Setup automation
+          name: Ignore CI for specific branches
           command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            ./deps/readies/bin/getpy3
-            ./sbin/system-setup.py
+            if [[ $CIRCLE_BRANCH == *noci ]]; then
+              echo "Identifies as actively ignoring CI, no testing required."
+              circleci step halt
+            fi
 
-  platform-build-steps:
-    parameters:
-      platform:
-        type: string
+
+  early_return_for_forked_pull_requests:
+    description: >-
+      If this build is from a fork, stop executing the current job and return success.
+      This is useful to avoid steps that will fail due to missing credentials.
     steps:
-      - setup-executor
+      - run:
+          name: Early return if this build is from a forked PR
+          command: |
+            if [[ -n "$CIRCLE_PR_NUMBER" ]]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
+
+  build_and_test:
+    steps:
+      - abort_for_docs
+      - abort_for_noci
       - checkout
-      - setup-automation
+
+      - restore_cache: # Download and cache dependencies
+          keys:
+          - v1-dependencies-{{ checksum "pyproject.toml" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
       - run:
-          name: Build for platform
+          name: install tox dependencies
           command: |
-            OSNICK=<<parameters.platform>> ./build/reqpacks/build
-      - persist_to_workspace:
-          root: bin/artifacts
+            pip install --user --quiet -r .circleci/circle_requirements.txt
+
+      - run:
+          name: build sdist and wheels
+          command: |
+            poetry build
+
+      - run:
+          name: lint
+          command: |
+            tox -e linters
+
+      - run:
+          name: run mysql tests
+          command:
+            tox -e mysql
+
+      - run:
+          name: run postgresql tests
+          command:
+            tox -e mysql
+
+      - save_cache:
           paths:
-            - '*.zip'
+            - ./.tox
+            - ~/.cache/pip
+          key: v1-dependencies-{{ checksum "pyproject.toml" }}
+
 
 jobs:
-  build-and-test:
-    docker:
-      - image: 'ubuntu:bionic'
-    steps:
-      - setup-executor
-      - checkout
-      - setup-automation
-      - run:
-          name: Install Redis
-          command: ./deps/readies/bin/getredis --version 6
-      - run:
-          name: Setup MySQL
-          command: |
-            service mysql start
-            ./sbin/setup-mysql
-      - run:
-          name: Install Gears and rgsync
-          command: |
-            ./sbin/setup-gears
-            /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
-      - run:
-          name: Tests
-          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so"
-
-  platform-build:
+  build:
     parameters:
-      platform:
+      python_version:
         type: string
+        default: "latest"
     docker:
-      - image: 'debian:buster'
+      - image: circleci/python:<<parameters.python_version>>
     steps:
-      - platform-build-steps:
-          platform: <<parameters.platform>>
- 
-  deploy-artifacts:
-    docker:
-      - image: 'cimg/base:2021.04'
-    steps:
-      - checkout
-      - attach_workspace:
-          at: bin/artifacts
-      - run:
-          name: Setup
-          command: sudo apt-get update && sudo apt-get install -y awscli
-      - run:
-          name: Deploy artifacts to S3
-          command: ./sbin/deploy-artifacts
-
+      - build_and_test
 
 on-any-branch: &on-any-branch
   filters:
     branches:
-      only: /.*/
-    tags:
-      only: /.*/
-
-never: &never
-  filters:
-    branches:
-      ignore: /.*/
+      only:
+        - /.*/
     tags:
       ignore: /.*/
 
-on-integ-branch: &on-integ-branch
+on-master: &on-master
   filters:
     branches:
       only:
         - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      ignore: /.*/
 
-not-on-integ-branch: &not-on-integ-branch
-  filters:
-    branches:
-      ignore:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      ignore: /.*/
-
-on-integ-and-version-tags: &on-integ-and-version-tags
-  filters:
-    branches:
-      only:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      only: /^v[0-9].*/
-
+# the is to build and test, per commit against all supported python versions
+python-versions: &python-versions
+  matrix:
+    parameters:
+      python_version:
+        - "3.6.9"
+        - "3.7.9"
+        - "3.8.9"
+        - "3.9.4"
+        - "latest"
 
 workflows:
-  version: 2
   commit:
     jobs:
-      - build-and-test:
-          <<: *not-on-integ-branch
-      - platform-build:
-          matrix:
-            parameters:
-              platform: [bionic, xenial, centos7] 
-          context: common
-          <<: *on-integ-and-version-tags
-      - deploy-artifacts:
-          context: common
-          requires:
-            - platform-build
-          <<: *on-integ-and-version-tags
+      - build:
+         <<: *on-any-branch
+         <<: *python-versions
 
   nightly:
     triggers:
       - schedule:
           cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
+          <<: *on-master
     jobs:
-      - build-and-test
+      - build
