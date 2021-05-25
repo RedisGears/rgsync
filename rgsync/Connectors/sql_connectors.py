@@ -133,7 +133,7 @@ class BaseSqlConnector():
                 self.conn = self.connection.Connect()
                 if self.exactlyOnceTableName is not None:
                     shardId = 'shard-%s' % hashtag()
-                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName, {'id':shardId}))
+                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName), {'id':shardId})
                     res = result.first()
                     if res is not None:
                         self.exactlyOnceLastId = str(res['val'])
