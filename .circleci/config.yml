@@ -66,16 +66,6 @@ commands:
           command: |
             tox -e linters
 
-      - run:
-          name: run mysql tests
-          command:
-            tox -e mysql
-
-      - run:
-          name: run postgresql tests
-          command:
-            tox -e mysql
-
       - save_cache:
           paths:
             - ./.tox
