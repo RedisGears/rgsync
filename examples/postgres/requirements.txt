@@ -1,0 +1,3 @@
+rgsync
+psycopg2
+cryptography

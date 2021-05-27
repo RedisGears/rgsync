@@ -1,6 +1,6 @@
 version: 2.1
 
-commands: 
+commands:
   setup-executor:
     steps:
       - run:
@@ -61,7 +61,8 @@ jobs:
             /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
       - run:
           name: Tests
-          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so"
+          command: |
+            python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so" -t tests/testMySQLWriteBehind.py
 
   platform-build:
     parameters:
@@ -72,7 +73,7 @@ jobs:
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
- 
+
   deploy-artifacts:
     docker:
       - image: 'cimg/base:2021.04'
@@ -142,7 +143,7 @@ workflows:
       - platform-build:
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7] 
+              platform: [bionic, xenial, centos7]
           context: common
           <<: *on-integ-and-version-tags
       - deploy-artifacts:
