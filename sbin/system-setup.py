@@ -26,7 +26,6 @@ class RGSyncSetup(paella.Setup):
         self.install("git zip unzip")
 
     def debian_compat(self):
-        self.install("python3-psutil")
         if self.osnick == 'bionic':
             self.install("mysql-server")
 
