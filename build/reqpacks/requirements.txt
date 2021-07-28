@@ -8,3 +8,4 @@ snowflake-sqlalchemy
 redis
 redis-py-cluster
 pyodbc
+urllib3>=1.26.5 # not directly required, pinned by Snyk to avoid a vulnerability
