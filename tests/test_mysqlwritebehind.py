@@ -50,14 +50,8 @@ class TestMysql:
 from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import MySqlConnector, MySqlConnection
 
-'''
-Create MySQL connection object
-'''
-connection = MySqlConnection({user}, {password}, '127.0.0.1:3306/{db}')
+connection = MySqlConnection('%s', '%s', '127.0.0.1:3306/%s')
 
-'''
-Create MySQL persons connector
-'''
 personsConnector = MySqlConnector(connection, 'persons', 'person_id')
 
 personsMappings = {
@@ -69,10 +63,7 @@ personsMappings = {
 RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
-""".format(user=dbuser, password=dbpasswd, db=db)
-
-        # self.dbConn.execute(text('delete from test.persons'))
-
+""" % (dbuser, dbpasswd, db)
 
         cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'pymysql')
         con = 'mysql+pymysql://{user}:{password}@localhost:3306/{db}'.format(
