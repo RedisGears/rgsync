@@ -21,8 +21,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
-SQLAlchemy = "^1.3.0"
 redis = "^3.5.3"
+SQLAlchemy = "1.3.24"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.2"
@@ -39,6 +39,7 @@ tox-pyenv = "^1.1.0"
 PyMySQL = "^1.0.2"
 rltest = {git = "https://github.com/RedisLabsModules/RLTest.git", rev = "master"}
 pymongo = "^3.12.0"
+cryptography = "^3.4.7"
 
 [tool.pytest.ini_options]
 markers = [
