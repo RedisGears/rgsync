@@ -4,6 +4,8 @@ from sqlalchemy.sql import text
 import time
 import pytest
 import tox
+import toml
+import os
 
 
 def to_utf(d):
@@ -28,9 +30,18 @@ class TestMysql:
         env = Env()
         cls.env = Env()
 
+        # determine the rgsync package, local or in the docker
+        # then install dependencies for this recipe
+        if os.path.isdir("/build/dist"):
+            ll = toml.load("../pyproject.toml")
+            version = ll['tool']['poetry']['version']
+            rg_req = "/build/dist/rgsync-{}-py3-none-any.whl".format(version)
+        else:
+            rg_req = "rgsync"
+
         # connection info
         r = tox.config.parseconfig(open("tox.ini").read())
-        docker = r._docker_container_configs["toxmysql"]["environment"]
+        docker = r._docker_container_configs["mysql"]["environment"]
         dbuser = docker["MYSQL_USER"]
         dbpasswd = docker["MYSQL_PASSWORD"]
         db = docker["MYSQL_DATABASE"]
@@ -40,21 +51,9 @@ class TestMysql:
             password=dbpasswd,
             db=db,
         )
-        e = create_engine(con).execution_options(autocommit=True)
-        cls.dbconn = e.connect()
-        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
-
-        table_create = """
-CREATE TABLE persons (
-    person_id VARCHAR(100) NOT NULL, 
-    first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, 
-    age INT NOT NULL, 
-    PRIMARY KEY (person_id)
-);
-""".replace("\n"," ")
-        cls.dbconn.execute(text(table_create))
 
         # initial gears setup
+        # cls.env.cmd('RG.PYEXECUTE', "print('')", 'REQUIREMENTS', rg_req)
         script = """
 from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import MySqlConnector, MySqlConnection
@@ -73,8 +72,20 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db)
+        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req, 'pymysql[rsa]')
 
-        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'pymysql')
+        table_create = """
+CREATE TABLE persons (
+    person_id VARCHAR(100) NOT NULL, 
+    first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, 
+    age INT NOT NULL, 
+    PRIMARY KEY (person_id)
+);
+"""
+        e = create_engine(con).execution_options(autocommit=True)
+        cls.dbconn = e.connect()
+        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+        cls.dbconn.execute(text(table_create))
         cls.dbconn.execute(text('delete from persons'))
 
     def testSimpleWriteBehind(self):
