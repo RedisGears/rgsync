@@ -27,7 +27,6 @@ class TestMysql:
 
     @classmethod
     def setup_class(cls):
-        env = Env()
         cls.env = Env()
 
         # determine the rgsync package, local or in the docker
@@ -72,7 +71,8 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db)
-        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req, 'pymysql[rsa]')
+        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req)
+        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'pymysql[rsa]')
 
         table_create = """
 CREATE TABLE persons (
