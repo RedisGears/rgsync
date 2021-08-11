@@ -29,14 +29,12 @@ class TestMysql:
     def setup_class(cls):
         cls.env = Env()
 
-        # determine the rgsync package, local or in the docker
-        # then install dependencies for this recipe
-        if os.path.isdir("/build/dist"):
-            ll = toml.load("../pyproject.toml")
-            version = ll['tool']['poetry']['version']
-            rg_req = "/build/dist/rgsync-{}-py3-none-any.whl".format(version)
-        else:
-            rg_req = "rgsync"
+        # build the path to the built rgsync, as it is in the docker
+        import os
+        print(os.getcwd())
+        ll = toml.load("pyproject.toml")
+        version = ll['tool']['poetry']['version']
+        rg_req = "/build/dist/rgsync-{}-py3-none-any.whl".format(version)
 
         # connection info
         r = tox.config.parseconfig(open("tox.ini").read())

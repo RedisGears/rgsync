@@ -45,6 +45,8 @@ psycopg2-binary = "^2.9.1"
 [tool.pytest.ini_options]
 markers = [
     "mysql: mysql backend tests",
+    "postgres: postgres backend tests",
+    "mongo: mongo backend tests",
 ]
 
 [build-system]
