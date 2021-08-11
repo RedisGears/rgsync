@@ -52,7 +52,6 @@ class TestMysql:
         )
 
         # initial gears setup
-        # cls.env.cmd('RG.PYEXECUTE', "print('')", 'REQUIREMENTS', rg_req)
         script = """
 from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import MySqlConnector, MySqlConnection
@@ -85,7 +84,6 @@ CREATE TABLE persons (
         cls.dbconn = e.connect()
         cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
         cls.dbconn.execute(text(table_create))
-        cls.dbconn.execute(text('delete from persons'))
 
     def testSimpleWriteBehind(self):
         self.env.cmd('flushall')

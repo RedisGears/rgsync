@@ -7,16 +7,18 @@ from .redis_connector import RedisConnector, RedisConnection, RedisClusterConnec
 __all__ = [
     'SimpleHashConnector',
 
-    'MsSqlConnector',
-    'MySqlConnector',
-    'OracleSqlConnector',
-    'PostgresConnector',
-    'SnowflakeSqlConnector',
     'MsSqlConnection',
+    'MsSqlConnector',
     'MySqlConnection',
+    'MySqlConnector',
     'OracleSqlConnection',
+    'OracleSqlConnector',
+
     'PostgresConnection',
+    'PostgresConnector',
+
     'SnowflakeSqlConnection',
+    'SnowflakeSqlConnector',
 
     'CqlConnector',
     'CqlConnection',

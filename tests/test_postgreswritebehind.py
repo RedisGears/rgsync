@@ -4,6 +4,8 @@ from sqlalchemy.sql import text
 import time
 import os
 import toml
+import tox
+import pytest
 
 
 def to_utf(d):
@@ -15,47 +17,88 @@ def to_utf(d):
         return [to_utf(x) for x in d]
     return d
 
-def Connect():
-    ConnectionStr = 'postgresql://{user}:{password}@{db}'.format(user='demo', password='Password123!', db='localhost:5432/test')
-    engine = create_engine(ConnectionStr).execution_options(autocommit=True)
-    conn = engine.connect()
-    return conn
+@pytest.mark.postgres
+class TestPgSQL:
 
-class testWriteBehind:
-    def __init__(self):
-        self.env = Env()
-        f = open('../examples/postgres/example.py', 'rt')
-        script = f.read()
-        f.close()
-        if os.path.isdir("/build/dist"):  # running inside the docker context
+    @classmethod
+    def teardown_class(cls):
+        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+
+    @classmethod
+    def setup_class(cls):
+        cls.env = Env()
+
+        # determine the rgsync package, local or in the docker
+        if os.path.isdir("/build/dist"):
             ll = toml.load("../pyproject.toml")
             version = ll['tool']['poetry']['version']
             rg_req = "/build/dist/rgsync-{}-py3-none-any.whl".format(version)
         else:
             rg_req = "rgsync"
 
-        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req)
-        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', 'psycopg2-binary')
 
-        self.dbConn = Connect()
-        self.dbConn.execute(text('delete from persons'))
+
+        # connection info
+        r = tox.config.parseconfig(open("tox.ini").read())
+        docker = r._docker_container_configs["postgres"]["environment"]
+        dbuser = docker["POSTGRES_USER"]
+        dbpasswd = docker["POSTGRES_PASSWORD"]
+        db = docker["POSTGRES_DB"]
+
+        con = 'postgresql://{user}:{password}@172.17.0.1:5432/{db}'.format(
+            user=dbuser,
+            password=dbpasswd,
+            db=db,
+        )
+
+        script = """
+from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync.Connectors import PostgresConnector, PostgresConnection
+
+connection = PostgresConnection('%s', '%s', '127.17.0.1:5432/%s')
+personsConnector = PostgresConnector(connection, 'persons', 'person_id')
+
+personsMappings = {
+	'first_name':'first',
+	'last_name':'last',
+	'age':'age'
+}
+
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+""" % (dbuser, dbpasswd, db)
+        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', rg_req, 'psycopg2-binary')
+
+        table_create = """
+CREATE TABLE persons (
+    person_id VARCHAR(100) NOT NULL, 
+    first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, 
+    age INT NOT NULL, 
+    PRIMARY KEY (person_id)
+);
+"""
+
+        e = create_engine(con).execution_options(autocommit=True)
+        cls.dbconn = e.connect()
+        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+        cls.dbconn.execute(text(table_create))
 
     def testSimpleWriteBehind(self):
     	self.env.cmd('flushall')
     	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	while result.rowcount == 0:
     		time.sleep(0.1)
-    		result = self.dbConn.execute(text('select * from persons'))
+    		result = self.dbconn.execute(text('select * from persons'))
     	res = result.next()
     	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
     	self.env.cmd('del', 'person:1')
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	count = 0
     	while result.rowcount > 0:
     		time.sleep(0.1)
-    		result = self.dbConn.execute(text('select * from persons'))
+    		result = self.dbconn.execute(text('select * from persons'))
     		if count == 10:
     			self.env.assertTrue(False, message='Failed on deleting data from the target')
     			break
@@ -74,7 +117,7 @@ class testWriteBehind:
     		count+=1
     	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	res = result.next()
     	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
@@ -91,7 +134,7 @@ class testWriteBehind:
     		count+=1
     	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
     	self.env.expect('hgetall', 'person:1').equal({})
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	self.env.assertEqual(result.rowcount, 0)
 
     def testWriteBehindOperations(self):
@@ -106,7 +149,7 @@ class testWriteBehind:
     	self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
 
     	# make sure data is not in the database
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	self.env.assertEqual(result.rowcount, 0)
 
     	# rewrite data with replicate
@@ -121,7 +164,7 @@ class testWriteBehind:
     		count+=1
     	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	res = result.next()
     	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
@@ -134,7 +177,7 @@ class testWriteBehind:
     	self.env.expect('hgetall', 'person:1').equal({})
 
     	# make sure data is still in the dabase
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	res = result.next()
     	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
@@ -144,11 +187,11 @@ class testWriteBehind:
 
     	# delete data with replicate and make sure its deleted from database and from redis
     	self.env.cmd('hset', 'person:1', '#', '~')
-    	result = self.dbConn.execute(text('select * from persons'))
+    	result = self.dbconn.execute(text('select * from persons'))
     	count = 0
     	while result.rowcount > 0:
     		time.sleep(0.1)
-    		result = self.dbConn.execute(text('select * from persons'))
+    		result = self.dbconn.execute(text('select * from persons'))
     		if count == 10:
     			self.env.assertTrue(False, message='Failed on deleting data from the target')
     			break
@@ -161,7 +204,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
@@ -170,7 +213,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} # ~')
 
         # make sure data is deleted from the database
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         self.env.expect('hgetall', 'person:1').equal({})
@@ -181,7 +224,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
@@ -190,7 +233,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo1')
 
         # make sure data is in the dabase
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo1', 'bar', 20))
 
@@ -199,7 +242,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} # ~')
 
         # make sure data is deleted from the database
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         self.env.expect('hgetall', 'person:1').equal({})
@@ -210,7 +253,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +')
 
         # make sure data is deleted from the database
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
@@ -221,7 +264,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
@@ -231,7 +274,7 @@ class testWriteBehind:
 
         # make sure data was deleted from redis but not from the target
         self.env.expect('hgetall', 'person:1').equal({})
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
@@ -239,7 +282,7 @@ class testWriteBehind:
         self.env.cmd('hset __{person:1} # ~')
 
         # make sure data was deleted from target as well
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
     def testWriteTroughAckStream(self):
@@ -251,7 +294,7 @@ class testWriteBehind:
         self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is in the dabase
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
         self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
 
@@ -264,7 +307,7 @@ class testWriteBehind:
         self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is deleted from the database
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         self.env.expect('hgetall', 'person:1').equal({})
@@ -278,7 +321,7 @@ class testWriteBehind:
         self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
         # make sure data is not in the target
-        result = self.dbConn.execute(text('select * from persons'))
+        result = self.dbconn.execute(text('select * from persons'))
         self.env.assertEqual(result.rowcount, 0)
 
         # make sure data is in redis
@@ -291,4 +334,3 @@ class testWriteBehind:
 
         # make sure data is deleted from redis
         self.env.expect('hgetall', 'person:1').equal({})
-

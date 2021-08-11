@@ -31,7 +31,7 @@ class MongoConnection():
 
     def Connect(self):
         from pymongo import MongoClient
-        WriteBehindLog('Connect: connecting ConnectionStr={}'.format(self._getConnectionStr))
+        WriteBehindLog('Connect: connecting')
         client = MongoClient(self._getConnectionStr, serverSelectionTimeoutMS=5000)
         client.server_info()  # there is no other way to test a connection
         WriteBehindLog('Connect: Connected')

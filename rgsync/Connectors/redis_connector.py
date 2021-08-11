@@ -60,7 +60,7 @@ class RedisClusterConnection():
     def Connect(self):
         from rediscluster.client import RedisCluster
         try:
-            WriteBehindLog("Connect: connecting to {}:{} password: {} cluster nodes: {}".format(self.host, self.port, self.password, self.cluster_nodes))
+            WriteBehindLog("Connect: connecting to {}:{} cluster nodes: {}".format(self.host, self.port, self.cluster_nodes))
             rc = RedisCluster(host=self.host, port=self.port, startup_nodes=self.cluster_nodes, password=self.password, decode_responses=True)
         except Exception as e:
             msg = "Cannot connect to Redis Cluster. Exception: {}".format(e)
