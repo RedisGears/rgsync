@@ -1,6 +1,6 @@
 from rgsync.common import *
-import json
 
+import json
 class MongoConnection():
 
     def __init__(self, user, password, db, collection):
@@ -52,3 +52,13 @@ class MongoConnector:
 
     def PrimaryKey(self):
         return self.pk
+
+    def PrepereQueries(self, mappings):
+
+        def GetUpdateQuery(tableName, mappings, pk):
+            newmap = {k: v for k,v in mappings.items() if not k.find('_') == 0}
+            query = {"$set": newmap}
+            return query
+
+        self.delQuery = self.TableName().delete_one({'id': self.PrimaryKey()})
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
