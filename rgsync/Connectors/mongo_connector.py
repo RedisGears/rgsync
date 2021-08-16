@@ -1,13 +1,11 @@
 from rgsync.common import *
 
-import json
-class MongoConnection():
+class MongoConnection(object):
 
-    def __init__(self, user, password, db, collection):
+    def __init__(self, user, password, db):
         self._user = user
         self._password = password
         self._db = db
-        self._collection = collection
 
     @property
     def user(self):
@@ -21,18 +19,19 @@ class MongoConnection():
     def db(self):
         return self._db() if callable(self._db) else self._db
 
-    # @property
-    # def collection(self):
-    #     return self._collection
-
     @property
     def _getConnectionStr(self):
-        return "mongodb://{}:{}".format(self.user, self.passwd)
+        con = "mongodb://{}:{}@{}?authSource=admin&authMechanism=SCRAM-SHA-256".format(
+            self.user,
+            self.password,
+            self.db,
+        )
+        return con
 
     def Connect(self):
         from pymongo import MongoClient
         WriteBehindLog('Connect: connecting')
-        client = MongoClient(self._getConnectionStr, serverSelectionTimeoutMS=5000)
+        client = MongoClient(self._getConnectionStr)
         client.server_info()  # there is no other way to test a connection
         WriteBehindLog('Connect: Connected')
         return client[self.db]
