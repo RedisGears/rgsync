@@ -62,9 +62,9 @@ class MongoConnector:
             query = {"$set": newmap}
             return query
 
-        self.delQuery = self.TableName().delete_one({'id': self.PrimaryKey()})
-        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        # self.delQuery = self.TableName().delete_one({'id': self.PrimaryKey()})
+        # self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
 
-    // TODO implement delete_one
+    # TODO implement delete_one
 
-    // TODO implement WriteData
+    # TODO implement WriteData
