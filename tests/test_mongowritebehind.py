@@ -36,7 +36,6 @@ class TestMongo:
         else:
             pkg = "rgsync"
 
-        print("-########################- {} -#################-".format(pkg))
         # connection info
         r = tox.config.parseconfig(open("tox.ini").read())
         docker = r._docker_container_configs["mongo"]["environment"]
@@ -44,38 +43,37 @@ class TestMongo:
         dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
         db = docker["MONGO_DB"]
 
-        con = "mongodb://{user}:{password}@172.17.0.1:27017/{db}?authSource=admin&authMechanism=SCRAM-SHA-256".format(
+        con = "mongodb://{user}:{password}@172.17.0.1:27017/{db}?authSource=admin".format(
             user=dbuser,
             password=dbpasswd,
             db=db,
         )
 
-        script = """
-from rgsync import RGWriteBehind, RGWriteThrough
-from rgsync.Connectors import MongoConnector, MongoConnection
+#         script = """
+# from rgsync import RGWriteBehind, RGWriteThrough
+# from rgsync.Connectors import MongoConnector, MongoConnection
 
-connection = MongoConnection('%s', '%s', '172.17.0.1:27017/%s')
+# connection = MongoConnection('%s', '%s', '172.17.0.1:27017/%s')
 
-personsConnector = MongoConnector(connection, 'persons', 'person_id')
+# personsConnector = MongoConnector(connection, 'persons', 'person_id')
 
-personsMappings = {
-    'first_name':'first',
-    'last_name':'last',
-    'age':'age'
-}
+# personsMappings = {
+#     'first_name':'first',
+#     'last_name':'last',
+#     'age':'age'
+# }
 
-RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+# RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
-""" % (dbuser, dbpasswd, db)
-        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
+# RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+# """ % (dbuser, dbpasswd, db)
+#         cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
-        print(con)
         e = MongoClient(con)
 
         # tables are only created upon data use - so this is our equivalent
         # for mongo
-        e.server_info()
+        assert 'version' in e.server_info().keys()
         cls.dbconn = e
 
     def testSimpleWriteBehind(self):

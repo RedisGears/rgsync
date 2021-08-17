@@ -2,10 +2,13 @@ from rgsync.common import *
 
 class MongoConnection(object):
 
-    def __init__(self, user, password, db):
+    def __init__(self, user, password, db, authSource="admin"):
         self._user = user
         self._password = password
         self._db = db
+
+        # mongo allows one to authenticate against different databases
+        self._authSource = authSource
 
     @property
     def user(self):
@@ -21,10 +24,11 @@ class MongoConnection(object):
 
     @property
     def _getConnectionStr(self):
-        con = "mongodb://{}:{}@{}?authSource=admin&authMechanism=SCRAM-SHA-256".format(
+        con = "mongodb://{}:{}@{}?authSource={}".format(
             self.user,
             self.password,
             self.db,
+            self._authSource
         )
         return con
 
@@ -32,10 +36,9 @@ class MongoConnection(object):
         from pymongo import MongoClient
         WriteBehindLog('Connect: connecting')
         client = MongoClient(self._getConnectionStr)
-        client.server_info()  # there is no other way to test a connection
+        client.server_info()  # light connection test
         WriteBehindLog('Connect: Connected')
         return client[self.db]
-
 
 class MongoConnector:
 
@@ -61,3 +64,7 @@ class MongoConnector:
 
         self.delQuery = self.TableName().delete_one({'id': self.PrimaryKey()})
         self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+
+    // TODO implement delete_one
+
+    // TODO implement WriteData
