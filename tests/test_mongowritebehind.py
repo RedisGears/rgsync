@@ -55,8 +55,9 @@ from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import MongoConnector, MongoConnection
 
 connection = MongoConnection('%s', '%s', '172.17.0.1:27017/%s')
+db = '%s'
 
-personsConnector = MongoConnector(connection, 'persons', 'person_id')
+personsConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
 personsMappings = {
     'first_name':'first',
@@ -66,8 +67,8 @@ personsMappings = {
 
 RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
-""" % (dbuser, dbpasswd, db)
+RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+""" % (dbuser, dbpasswd, db, db)
         cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
         e = MongoClient(con)
