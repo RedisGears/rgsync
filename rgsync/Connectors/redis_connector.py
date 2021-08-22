@@ -24,7 +24,7 @@ class RedisConnection():
     def Connect(self):
         from redis.client import Redis
         try:
-            WriteBehindLog("Connect: connecting to {}:{}".format(self.host, self.port)
+            WriteBehindLog("Connect: connecting to {}:{}".format(self.host, self.port))
             r = Redis(host=self.host, port=self.port, password=self.password, decode_responses=True)
         except Exception as e:
             msg = "Cannot connect to Redis. Exception: {}".format(e)
