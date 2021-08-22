@@ -1,5 +1,4 @@
 from rgsync.common import *
-from pymongo import InsertOne, ReplaceOne, DeleteOne
 
 class MongoConnection(object):
 
@@ -59,6 +58,7 @@ class MongoConnector:
         return self.pk
 
     def PrepereQueries(self, mappings):
+        from pymongo import InsertOne, ReplaceOne, DeleteOne
 
         def GetUpdateQuery(mappings, pk):
             query = {k: v for k,v in mappings.items() if not k.find('_') == 0}

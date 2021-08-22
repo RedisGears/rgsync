@@ -1,10 +1,8 @@
 import pytest
 import tox
-import toml
 from RLTest import Env
 from pymongo import MongoClient
-import os
-
+from tests import find_package
 
 @pytest.mark.mongo
 class TestMongo:
@@ -16,25 +14,7 @@ class TestMongo:
     def setup_class(cls):
         cls.env = Env()
 
-        # build the path to the built rgsync, as it is in the docker
-        ll = toml.load("pyproject.toml")
-        version = ll['tool']['poetry']['version']
-        rgsync_pkg =  "rgsync-{}-py3-none-any.whl".format(version)
-
-        # determine whether or not we're running in a docker
-        in_docker = False
-        if os.path.isfile("/.dockerenv") or \
-            os.environ.get("IN_DOCKER", None) is not None:
-            in_docker = True
-
-        # install package
-        if os.path.join(os.getcwd(), "dist", rgsync_pkg):
-            if in_docker:
-                pkg = os.path.join("/build", "dist", rgsync_pkg)
-            else:
-                pkg = os.path.join(os.getcwd(), "dist", rgsync_pkg)
-        else:
-            pkg = "rgsync"
+        pkg = find_package()
 
         # connection info
         r = tox.config.parseconfig(open("tox.ini").read())
