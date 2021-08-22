@@ -5,7 +5,7 @@ class MongoConnection(object):
 
     def __init__(self, user, password, db, authSource="admin"):
         self._user = user
-        self._password = password
+        self._passwd = password
         self._db = db
 
         # mongo allows one to authenticate against different databases
@@ -27,7 +27,7 @@ class MongoConnection(object):
     def _getConnectionStr(self):
         con = "mongodb://{}:{}@{}?authSource={}".format(
             self.user,
-            self.password,
+            self.passwd,
             self.db,
             self._authSource
         )
@@ -44,8 +44,8 @@ class MongoConnection(object):
 class MongoConnector:
 
     def __init__(self, connection, db, tableName, pk, exactlyOnceTableName=None):
-        self.connection
-        self.collection = connection[db][tableName]
+        self.connection = connection.Connect()
+        self.collection = self.connection[db][tableName]
         self.pk = pk
         self.exactlyOnceTableName = exactlyOnceTableName
         self.exactlyOnceLastId = None
