@@ -34,7 +34,7 @@ class CqlConnection():
 
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog('Connect: connecting db=%s user=%s keyspace=%s' % (self.db, self.user, self.keyspace))
+        WriteBehindLog('Connect: connecting db=%s keyspace=%s' % (self.db, self.keyspace))
         auth_provider = PlainTextAuthProvider(username=self.user, password=self.password)
         cluster = Cluster(self.db.split(), auth_provider=auth_provider)
         if self.keyspace != '':

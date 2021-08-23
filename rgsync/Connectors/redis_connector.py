@@ -24,7 +24,7 @@ class RedisConnection():
     def Connect(self):
         from redis.client import Redis
         try:
-            WriteBehindLog("Connect: connecting to {}:{} password: {}".format(self.host, self.port, self.password))
+            WriteBehindLog("Connect: connecting to {}:{}".format(self.host, self.port))
             r = Redis(host=self.host, port=self.port, password=self.password, decode_responses=True)
         except Exception as e:
             msg = "Cannot connect to Redis. Exception: {}".format(e)
@@ -56,11 +56,11 @@ class RedisClusterConnection():
     @property
     def cluster_nodes(self):
         return self._cluster_nodes() if callable(self._cluster_nodes) else self._cluster_nodes
-    
+
     def Connect(self):
         from rediscluster.client import RedisCluster
         try:
-            WriteBehindLog("Connect: connecting to {}:{} password: {} cluster nodes: {}".format(self.host, self.port, self.password, self.cluster_nodes))
+            WriteBehindLog("Connect: connecting to {}:{} cluster nodes: {}".format(self.host, self.port, self.cluster_nodes))
             rc = RedisCluster(host=self.host, port=self.port, startup_nodes=self.cluster_nodes, password=self.password, decode_responses=True)
         except Exception as e:
             msg = "Cannot connect to Redis Cluster. Exception: {}".format(e)
@@ -102,7 +102,7 @@ class RedisConnector():
 
         if not self.session:
             self.session = self.connection.Connect()
-        
+
         # in case of exactly once get last id written
         shardId = None
         try:
@@ -140,7 +140,7 @@ class RedisConnector():
                 self.shouldCompareId = False
 
                 # check operation permission, what gets replicated
-                op = d_val.pop(OP_KEY, None)        # pop the operation key out of the record 
+                op = d_val.pop(OP_KEY, None)        # pop the operation key out of the record
                 if op not in self.supportedOperations:
                     msg = 'Got unknown operation'
                     raise Exception(msg) from None
@@ -149,12 +149,12 @@ class RedisConnector():
                 newKey = '{}:{}'.format(self.new_prefix, pk)
 
                 if op != OPERATION_UPDATE_REPLICATE:
-                    # pipeline key to delete 
+                    # pipeline key to delete
                     pipe.delete(newKey)
                 else:
                     # pipeline key and field-value mapping to set
                     pipe.hset(newKey, mapping=d_val)
-                    
+
                 # make entry for exactly once. In case of Redis cluster exception will be raised already
                 if((self.exactlyOnceTableName is not None) and
                         isinstance(self.connection, RedisConnection)):
