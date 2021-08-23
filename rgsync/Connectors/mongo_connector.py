@@ -43,16 +43,22 @@ class MongoConnection(object):
 class MongoConnector:
 
     def __init__(self, connection, db, tableName, pk, exactlyOnceTableName=None):
-        self.connection = connection.Connect()
-        self.collection = self.connection[db][tableName]
+        self.connection = connection
+        self.tableName = tableName
+        self.db = db
+        # self.collection = self.connection[db][tableName]
         self.pk = pk
         self.exactlyOnceTableName = exactlyOnceTableName
         self.exactlyOnceLastId = None
         self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
         self.supportedOperations = [OPERATION_DEL_REPLICATE, OPERATION_UPDATE_REPLICATE]
 
-    # def TableName(self):
-    #     return self.tableName
+    @property    
+    def collection(self):
+        return self.connection.Connect[self.db][self.tableName]
+
+    def TableName(self):
+        return self.tableName
 
     def PrimaryKey(self):
         return self.pk
