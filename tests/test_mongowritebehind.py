@@ -116,7 +116,34 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 
 
     def testSimpleWriteThroughPartialUpdate(self):
-        pass
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop('_id')
+        assert res == {"age": '20', 
+                       "last": "bar", 
+                       "first": "foo",
+                       "person_id": '1'}
+
+        # self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+
+        self.env.execute_command('hset __{person:1} first_name foo1')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        assert res['first'] == 'foo1'
+
+        r = self.env.hgetall("person:1")
+        assert r == {"age": '20', 
+                     "last_name": "bar", 
+                     "first_name": "foo1"}
+
+        self.env.execute_command('hset __{person:1} # ~')
+
+        # make sure data is deleted from the database
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
+
+        assert self.env.hgetall('person:1') == {}
+
 
     def testWriteThroughNoReplicate(self):
         self.env.flushall()
