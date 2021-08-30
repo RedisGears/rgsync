@@ -1,6 +1,8 @@
 import pytest
+import time
 import tox
-from RLTest import Env
+from redis import Redis
+# from RLTest import Env
 from pymongo import MongoClient
 from tests import find_package
 
@@ -12,7 +14,7 @@ class TestMongo:
         cls.dbconn.drop_database(cls.DBNAME)
 
     def setup_class(cls):
-        cls.env = Env()
+        cls.env = Redis() #Env()
 
         pkg = find_package()
 
@@ -22,7 +24,6 @@ class TestMongo:
         dbuser = docker["MONGO_INITDB_ROOT_USERNAME"]
         dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
         db = docker["MONGO_DB"]
-        cls.DBNAME = db
 
         con = "mongodb://{user}:{password}@172.17.0.1:27017/{db}?authSource=admin".format(
             user=dbuser,
@@ -49,14 +50,22 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 
 RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db, db)
-        cls.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
+        cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
         e = MongoClient(con)
 
-        # tables are only created upon data use - so this is our equivalent
-        # for mongo
+        # # tables are only created upon data use - so this is our equivalent
+        # # for mongo
         assert 'version' in e.server_info().keys()
         cls.dbconn = e
+        cls.DBNAME = db
 
     def testSimpleWriteBehind(self):
-        print('ehllo world!')
+        self.env.execute_command('flushall')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        while len(result) == 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+
+        self.env.execute_command('del', 'person:1')

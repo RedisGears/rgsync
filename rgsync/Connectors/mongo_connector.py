@@ -46,7 +46,6 @@ class MongoConnector:
         self.connection = connection
         self.tableName = tableName
         self.db = db
-        # self.collection = self.connection[db][tableName]
         self.pk = pk
         self.exactlyOnceTableName = exactlyOnceTableName
         self.exactlyOnceLastId = None
@@ -55,7 +54,7 @@ class MongoConnector:
 
     @property    
     def collection(self):
-        return self.connection.Connect[self.db][self.tableName]
+        return self.connection.Connect()[self.db][self.tableName]
 
     def TableName(self):
         return self.tableName
@@ -68,12 +67,11 @@ class MongoConnector:
 
         def GetUpdateQuery(mappings, pk):
             query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
-            query['_id'] = pk
-            return ReplaceOne(filter={'_id': pk}, replacement=query, upsert=True)
+            query['_gears_id'] = pk
+            return ReplaceOne(filter={'_gears_id': pk}, replacement=query, upsert=True)
 
-        self.delQuery = DeleteOne({'_id': self.PrimaryKey()})
-        self.addQuery = InsertOne(GetUpdateQuery(mappings, self.pk))
-        self.exactlyOnceQuery = GetUpdateQuery({'val', 'val'}, '_id')
+        self.delQuery = DeleteOne({'_gears_id': self.PrimaryKey()})
+        self.addQuery = GetUpdateQuery(mappings, self.PrimaryKey())
 
     def WriteData(self, data):
         if len(data) == 0:
@@ -81,23 +79,16 @@ class MongoConnector:
             return
 
         query = None
-        isAddBatch = True if data[0]['value'][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
-        query = self.addQuery if isAddBatch else self.delQuery
         lastStreamId = None
 
         try:
-            if not self.conn:
-                from sqlalchemy.sql import text
-                self.sqlText = text
-                con = self.connection.Connect()
-                if self.exactlyOnceTableName is not None:
-                    collection = con[self.db][self.exactlyOnceTableName]
-                    shardId = 'shard-%s' % hashtag()
-                    result = collection.find_one({"_id", shardId})
-                    if result is not None:
-                        self.exactlyOnceLastId = result['_id']
-                    else:
-                        self.shouldCompareId = False
+            if self.exactlyOnceTableName is not None:
+                shardId = 'shard-%s' % hashtag()
+                result = self.collection().find_one({"_id", shardId})
+                if result is not None:
+                    self.exactlyOnceLastId = result['_id']
+                else:
+                    self.shouldCompareId = False
 
         except Exception as e:
             self.exactlyOnceLastId = None
@@ -106,43 +97,33 @@ class MongoConnector:
             WriteBehindLog(msg)
             raise Exception(msg) from None
 
-        idsToAck = []
+        batch = []
+
+        for d in data:
+            import json
+            WriteBehindLog(json.dumps(d))
+            x = d['value']
+
+            lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
+            if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
+                WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
+
+            op = x.pop(OP_KEY, None)
+            if op not in self.supportedOperations:
+                msg = 'Got unknown operation'
+                WriteBehindLog(msg)
+                raise Exception(msg) from None
+
+            self.shouldCompareId = False
+            if op == OPERATION_DEL_REPLICATE:
+                batch.append(self.delQuery)
+            elif op == OPERATION_UPDATE_REPLICATE:
+                x = self.addQuery
+                batch.append(self.addQuery)
 
         try:
-            with self.connection.Connect().start_session() as session:
-                with session.start_transaction():
-                    for d in data:
-                        x = d['value']
-
-                        lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
-                        if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
-                            WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
-                            continue
-
-                        op = x.pop(OP_KEY, None)
-                        if op not in self.supportedOperations:
-                            msg = 'Got unknown operation'
-                            WriteBehindLog(msg)
-                            raise Exception(msg) from None
-
-                        self.shouldCompareId = False
-                        if op != OPERATION_UPDATE_REPLICATE: # we have only key name, it means that the key was deleted
-                            if isAddBatch:
-                                self.collection.bulk_write(batch)
-                                batch = []
-                                isAddBatch = False
-                                query = self.delQuery
-                            batch.append(x)
-                        else:
-                            if not isAddBatch:
-                                self.collection.bulk_write(batch)
-                                batch = []
-                                isAddBatch = True
-                                query = self.addQuery
-                            batch.append(x)
-
-                    if len(batch) > 0:
-                            self.collection.bulk_write(batch)
+            if len(batch) > 0:
+                self.collection.bulk_write(batch)
 
         except Exception as e:
             self.exactlyOnceLastId = None
