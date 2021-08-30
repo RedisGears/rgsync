@@ -10,9 +10,9 @@ from tests import find_package, to_utf
 @pytest.mark.mongo
 class TestMongo:
 
-    # @classmethod
-    # def teardown_class(cls):
-    #     cls.dbconn.drop_database(cls.DBNAME)
+    @classmethod
+    def teardown_class(cls):
+        cls.dbconn.drop_database(cls.DBNAME)
 
     def setup_class(cls):
         cls.env = Redis(decode_responses=True)
@@ -92,7 +92,28 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         pass
 
     def testSimpleWriteThrough(self):
-        pass
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
+
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop('_id')
+        assert res == {"age": '20', 
+                       "last": "bar", 
+                       "first": "foo",
+                       "person_id": '1'}
+
+        assert OrderedDict(self.env.hgetall("person:1")) == OrderedDict({"age": '20', 
+                                                                         "last_name": "bar", 
+                                                                         "first_name": "foo"})
+
+        self.env.execute_command('hset __{person:1} # ~')
+
+        # make sure data is deleted from the database
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
+
+        assert self.env.hgetall("person:1") == {}
+
 
     def testSimpleWriteThroughPartialUpdate(self):
         pass
@@ -106,7 +127,9 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
 
         r = self.env.hgetall("person:1")
-        assert OrderedDict(r) == OrderedDict({"age": '20', "last_name": "bar", "first_name": "foo"})
+        assert r == {"age": '20', 
+                     "last_name": "bar", 
+                     "first_name": "foo"}
 
     def testDelThroughNoReplicate(self):
         pass
