@@ -9,9 +9,9 @@ from tests import find_package
 @pytest.mark.mongo
 class TestMongo:
 
-    @classmethod
-    def teardown_class(cls):
-        cls.dbconn.drop_database(cls.DBNAME)
+    # @classmethod
+    # def teardown_class(cls):
+    #     cls.dbconn.drop_database(cls.DBNAME)
 
     def setup_class(cls):
         cls.env = Redis() #Env()
@@ -68,4 +68,18 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
 
+        assert result[0]['first'] == 'foo'
+        assert result[0]['last'] == 'bar'
+        assert result[0]['age'] == '22'
+        assert result[0]['person_id'] == '1'
+
         self.env.execute_command('del', 'person:1')
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while len(result) != 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count += 1

@@ -1,4 +1,5 @@
 from rgsync.common import *
+from pymongo import InsertOne, ReplaceOne, DeleteOne
 
 class MongoConnection(object):
 
@@ -42,6 +43,7 @@ class MongoConnection(object):
 
 class MongoConnector:
 
+
     def __init__(self, connection, db, tableName, pk, exactlyOnceTableName=None):
         self.connection = connection
         self.tableName = tableName
@@ -62,16 +64,13 @@ class MongoConnector:
     def PrimaryKey(self):
         return self.pk
 
-    def PrepereQueries(self, mappings):
-        from pymongo import InsertOne, ReplaceOne, DeleteOne
+    def DeleteQuery(self, mappings):
+        return DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
 
-        def GetUpdateQuery(mappings, pk):
-            query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
-            query['_gears_id'] = pk
-            return ReplaceOne(filter={'_gears_id': pk}, replacement=query, upsert=True)
-
-        self.delQuery = DeleteOne({'_gears_id': self.PrimaryKey()})
-        self.addQuery = GetUpdateQuery(mappings, self.PrimaryKey())
+    def AddOrUpdateQuery(self, mappings):
+        query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
+        return ReplaceOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
+                          replacement=query, upsert=True)
 
     def WriteData(self, data):
         if len(data) == 0:
@@ -101,8 +100,9 @@ class MongoConnector:
 
         for d in data:
             import json
-            WriteBehindLog(json.dumps(d))
+            WriteBehindLog(json.dumps(d), prefix="RAW DATA: ")
             x = d['value']
+            WriteBehindLog(json.dumps(x), prefix="DATA: ")
 
             lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
             if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
@@ -115,11 +115,11 @@ class MongoConnector:
                 raise Exception(msg) from None
 
             self.shouldCompareId = False
+            WriteBehindLog(self.PrimaryKey())
             if op == OPERATION_DEL_REPLICATE:
-                batch.append(self.delQuery)
+                batch.append(self.DeleteQuery(x))
             elif op == OPERATION_UPDATE_REPLICATE:
-                x = self.addQuery
-                batch.append(self.addQuery)
+                batch.append(self.AddOrUpdateQuery(x))
 
         try:
             if len(batch) > 0:

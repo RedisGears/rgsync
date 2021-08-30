@@ -329,7 +329,7 @@ class RGWriteBehind(RGWriteBase):
             1. TableName() - returns the name of the table to write the data to
             2. PrimaryKey() - returns the name of the public key of the relevant table
             3. PrepereQueries(mappings) - will be called at start to allow the connector to
-                prepere the quiries. This function is not mandatory and will be called only
+                prepare the queries. This function is not mandatory and will be called only
                 if exists.
             4. WriteData(data) -
                 data is a list of dictionaries of the following format
