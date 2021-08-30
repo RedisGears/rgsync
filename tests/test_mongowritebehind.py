@@ -1,10 +1,11 @@
 import pytest
+from collections import OrderedDict
 import time
 import tox
 from redis import Redis
 # from RLTest import Env
 from pymongo import MongoClient
-from tests import find_package
+from tests import find_package, to_utf
 
 @pytest.mark.mongo
 class TestMongo:
@@ -14,7 +15,7 @@ class TestMongo:
     #     cls.dbconn.drop_database(cls.DBNAME)
 
     def setup_class(cls):
-        cls.env = Redis() #Env()
+        cls.env = Redis(decode_responses=True)
 
         pkg = find_package()
 
@@ -61,7 +62,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         cls.DBNAME = db
 
     def testSimpleWriteBehind(self):
-        self.env.execute_command('flushall')
+        self.env.flushall()
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
         result = list(self.dbconn[self.DBNAME]['persons'].find())
         while len(result) == 0:
@@ -83,3 +84,35 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
                 assert False == True, "Failed deleting data from mongo"
                 break
             count += 1
+
+    def testWriteBehindAck(self):
+        pass
+
+    def testWriteBehindOperations(self):
+        pass
+
+    def testSimpleWriteThrough(self):
+        pass
+
+    def testSimpleWriteThroughPartialUpdate(self):
+        pass
+
+    def testWriteThroughNoReplicate(self):
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # +')
+
+        # make sure data is deleted from the database
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
+
+        r = self.env.hgetall("person:1")
+        assert OrderedDict(r) == OrderedDict({"age": '20', "last_name": "bar", "first_name": "foo"})
+
+    def testDelThroughNoReplicate(self):
+        pass
+
+    def testWriteTroughAckStream(self):
+        pass
+
+    def testWriteTroughAckStreamNoReplicate(self):
+        pass

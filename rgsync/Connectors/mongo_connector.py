@@ -100,9 +100,7 @@ class MongoConnector:
 
         for d in data:
             import json
-            WriteBehindLog(json.dumps(d), prefix="RAW DATA: ")
             x = d['value']
-            WriteBehindLog(json.dumps(x), prefix="DATA: ")
 
             lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
             if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
