@@ -5,15 +5,15 @@ import tox
 from redis import Redis
 # from RLTest import Env
 from pymongo import MongoClient
-from tests import find_package, to_utf
+from tests import find_package
 
 @pytest.mark.mongo
 class TestMongo:
 
-    @classmethod
-    def teardown_class(cls):
-        cls.dbconn.drop_database(cls.DBNAME)
+    def teardown_method(self):
+        self.dbconn.drop_database(self.DBNAME)
 
+    @classmethod
     def setup_class(cls):
         cls.env = Redis(decode_responses=True)
 
@@ -86,10 +86,102 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
             count += 1
 
     def testWriteBehindAck(self):
-        pass
+        self.env.flushall()
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count+=1
+        assert res[0][1][0][1], ['status', 'done']
+
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop('_id')
+        assert res == {"age": '22', 
+                      "last": "bar", 
+                      "first": "foo",
+                      "person_id": "1"}
+
+        # # delete from database
+        self.env.execute_command('hset', 'person:1', '#', '~2')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
+        assert res[0][1][0][1], ['status', 'done']
+        assert self.env.hgetall("person:1") == {}
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
 
     def testWriteBehindOperations(self):
-        pass
+        self.env.flushall()
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1], ['status', 'done']
+
+        assert self.env.hgetall('person:1') == {'age': '22', 'last_name': 'bar', 'first_name': 'foo'}
+ 
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
+
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count+=1
+        assert res[0][1][0][1], ['status', 'done']
+
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop("_id")
+        assert res == {"age": '22', 
+                      "last": "bar", 
+                      "first": "foo",
+                      "person_id": "1"}
+
+        # delete data without replicate
+        self.env.execute_command('hset', 'person:1', '#', '-')
+        self.env.execute_command('hset', 'person:1', '#', '-3')
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
+        assert res[0][1][0][1], ['status', 'done']
+
+        assert self.env.hgetall('person:1') == {}
+
+
+        # make sure data is still in the dabase
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop("_id")
+        assert res == {"age": '22', 
+                      "last": "bar", 
+                      "first": "foo",
+                      "person_id": "1"}
+
+        # rewrite a hash and not replicate
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        assert self.env.hgetall('person:1') == {'first_name':'foo', 'last_name': 'bar', 'age': '22'}
+
+        # delete data with replicate and make sure its deleted from database and from redis
+        self.env.execute_command('hset', 'person:1', '#', '~')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        count = 0
+        while len(res) != 0:
+            time.sleep(0.1)
+            res = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count+=1
+        assert self.env.hgetall('person:1') == {}
+
 
     def testSimpleWriteThrough(self):
         self.env.flushall()
@@ -126,8 +218,6 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
                        "first": "foo",
                        "person_id": '1'}
 
-        # self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
-
         self.env.execute_command('hset __{person:1} first_name foo1')
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         assert res['first'] == 'foo1'
@@ -159,10 +249,84 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
                      "first_name": "foo"}
 
     def testDelThroughNoReplicate(self):
-        pass
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop('_id')
+        assert res == {"age": '20', 
+                       "last": "bar", 
+                       "first": "foo",
+                       "person_id": '1'}
+
+        # make sure data is in the dabase
+
+        assert OrderedDict(self.env.hgetall("person:1")) == OrderedDict({"age": '20', 
+                                                                         "last_name": "bar", 
+                                                                         "first_name": "foo"})
+
+        self.env.execute_command('hset __{person:1} # -')
+
+        # make sure data was deleted from redis but not from the target
+        assert self.env.hgetall("person:1") == {}
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        assert len(result) != 0
+
+        self.env.execute_command('hset __{person:1} # ~')
+
+        # make sure data was deleted from target as well
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        assert len(result) == 0
 
     def testWriteTroughAckStream(self):
-        pass
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # =1')
+
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1], ['status', 'done']
+
+        # make sure data is in the dabase
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop("_id")
+        assert res == {"age": '20', 
+                      "last": "bar", 
+                      "first": "foo",
+                      "person_id": "1"}
+
+        # make sure data is in redis
+        assert self.env.hgetall('person:1') == {'age': '20', 'last_name': 'bar', 'first_name': 'foo'}
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # ~2')
+
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        assert res[0][1][0][1], ['status', 'done']
+
+        # make sure data is deleted from the database
+        res = list(self.dbconn[self.DBNAME]['persons'].find())
+        assert len(res) == 0
+
+        assert self.env.hgetall("person:1") == {}
 
     def testWriteTroughAckStreamNoReplicate(self):
-        pass
+        self.env.flushall()
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # +1')
+
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1], ['status', 'done']
+
+        # make sure data is not in the target
+        res = list(self.dbconn[self.DBNAME]['persons'].find())
+        assert len(res) == 0
+
+        # make sure data is in redis
+        assert self.env.hgetall('person:1') == {'age': '20', 'last_name': 'bar', 'first_name': 'foo'}
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # -2')
+
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        assert res[0][1][0][1] == ['status', 'done']
+
+        # make sure data is deleted from redis
+        assert self.env.hgetall("person:1") == {}
