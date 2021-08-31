@@ -42,7 +42,7 @@ commands:
     steps:
       - run:
           name: Install tox requirements
-          command: pip install --user -q .circleci/circleci_requirements.txt
+          command: pip install --user -q .circleci/circle_requirements.txt
 
 jobs:
   build-and-test:
