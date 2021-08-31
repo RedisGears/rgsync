@@ -38,31 +38,29 @@ commands:
           paths:
             - '*.zip'
 
+  setup-circleci-tox:
+    steps:
+      - run:
+          name: Install tox requirements
+          command: pip install --user -q .circleci/circleci_requirements.txt
+
 jobs:
   build-and-test:
+    parameters:
+      tox_env:
+        type: string
+      python_version:
+        type: string
     docker:
-      - image: 'ubuntu:bionic'
+      - image: circleci/python:<<parameters.python_version>>
     steps:
-      - setup-executor
+      - setup_remote_docker
       - checkout
-      - setup-automation
+      - setup-circleci-tox
       - run:
-          name: Install Redis
-          command: ./deps/readies/bin/getredis --version 6
-      - run:
-          name: Setup MySQL
-          command: |
-            service mysql start
-            ./sbin/setup-mysql
-      - run:
-          name: Install Gears and rgsync
-          command: |
-            ./sbin/setup-gears
-            /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
-      - run:
-          name: Tests
-          command: |
-            python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so" -t tests/testMySQLWriteBehind.py
+          name: Tests for <<parameters.tox_env>>
+          command: tox -e <<parameters.tox_env>>
+          no_output_timeout: 10m
 
   platform-build:
     parameters:
@@ -140,6 +138,10 @@ workflows:
     jobs:
       - build-and-test:
           <<: *not-on-integ-branch
+          matrix:
+            parameters:
+              python_version: ["3.9"]
+              tox_env: [mysql, mongo, postgres]
       - platform-build:
           matrix:
             parameters:
@@ -152,13 +154,13 @@ workflows:
             - platform-build
           <<: *on-integ-and-version-tags
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - build-and-test
+  # nightly:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 0 * * *"
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #   jobs:
+  #     - build-and-test
