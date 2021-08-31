@@ -36,119 +36,125 @@ CREATE TABLE persons (
         cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
 
     def testSimpleWriteBehind(self):
-    	self.env.cmd('flushall')
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
-    	result = self.dbconn.execute(text('select * from persons'))
-    	while result.rowcount == 0:
-    		time.sleep(0.1)
-    		result = self.dbconn.execute(text('select * from persons'))
-    	res = result.next()
-    	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        self.env.cmd('flushall')
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
+        result = self.dbconn.execute(text('select * from persons'))
+        count = 0
+        while result.rowcount == 0:
+            time.sleep(0.1)
+            result = self.dbconn.execute(text('select * from persons'))
+            print(result)
+            count += 1
+            if count == 10:
+                self.env.assertTrue(False, message='That failed')
+                break
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
-    	self.env.cmd('del', 'person:1')
-    	result = self.dbconn.execute(text('select * from persons'))
-    	count = 0
-    	while result.rowcount > 0:
-    		time.sleep(0.1)
-    		result = self.dbconn.execute(text('select * from persons'))
-    		if count == 10:
-    			self.env.assertTrue(False, message='Failed on deleting data from the target')
-    			break
-    		count+=1
+        self.env.cmd('del', 'person:1')
+        result = self.dbconn.execute(text('select * from persons'))
+        count = 0
+        while result.rowcount > 0:
+            time.sleep(0.1)
+            result = self.dbconn.execute(text('select * from persons'))
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
 
     def testWriteBehindAck(self):
-    	self.env.cmd('flushall')
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
-    	res = None
-    	count = 0
-    	while res is None:
-    		res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-    		if count == 10:
-    			self.env.assertTrue(False, message='Failed on deleting data from the target')
-    			break
-    		count+=1
-    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        self.env.cmd('flushall')
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	result = self.dbconn.execute(text('select * from persons'))
-    	res = result.next()
-    	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        result = self.dbconn.execute(text('select * from persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
 
-    	# delete from database
-    	self.env.cmd('hset', 'person:1', '#', '~2')
-    	res = None
-    	count = 0
-    	while res is None:
-    		res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-    		if count == 10:
-    			self.env.assertTrue(False, message='Failed on deleting data from the target')
-    			break
-    		count+=1
-    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
-    	self.env.expect('hgetall', 'person:1').equal({})
-    	result = self.dbconn.execute(text('select * from persons'))
-    	self.env.assertEqual(result.rowcount, 0)
+        # delete from database
+        self.env.cmd('hset', 'person:1', '#', '~2')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        self.env.expect('hgetall', 'person:1').equal({})
+        result = self.dbconn.execute(text('select * from persons'))
+        self.env.assertEqual(result.rowcount, 0)
 
     def testWriteBehindOperations(self):
-    	self.env.cmd('flushall')
+        self.env.cmd('flushall')
 
-    	# write a hash and not replicate
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
-    	res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        # write a hash and not replicate
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
 
-    	# make sure data is not in the database
-    	result = self.dbconn.execute(text('select * from persons'))
-    	self.env.assertEqual(result.rowcount, 0)
+        # make sure data is not in the database
+        result = self.dbconn.execute(text('select * from persons'))
+        self.env.assertEqual(result.rowcount, 0)
 
-    	# rewrite data with replicate
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
-    	res = None
-    	count = 0
-    	while res is None:
-    		res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-    		if count == 10:
-    			self.env.assertTrue(False, message='Failed on deleting data from the target')
-    			break
-    		count+=1
-    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        # rewrite data with replicate
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
+        res = None
+        count = 0
+        while res is None:
+            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	result = self.dbconn.execute(text('select * from persons'))
-    	res = result.next()
-    	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        result = self.dbconn.execute(text('select * from persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
-    	# delete data without replicate
-    	self.env.cmd('hset', 'person:1', '#', '-')
-    	self.env.cmd('hset', 'person:1', '#', '-3')
-    	res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
-    	self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        # delete data without replicate
+        self.env.cmd('hset', 'person:1', '#', '-')
+        self.env.cmd('hset', 'person:1', '#', '-3')
+        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
+        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
 
-    	self.env.expect('hgetall', 'person:1').equal({})
+        self.env.expect('hgetall', 'person:1').equal({})
 
-    	# make sure data is still in the dabase
-    	result = self.dbconn.execute(text('select * from persons'))
-    	res = result.next()
-    	self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        # make sure data is still in the dabase
+        result = self.dbconn.execute(text('select * from persons'))
+        res = result.next()
+        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
 
-    	# rewrite a hash and not replicate
-    	self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
-    	self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+        # rewrite a hash and not replicate
+        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
 
-    	# delete data with replicate and make sure its deleted from database and from redis
-    	self.env.cmd('hset', 'person:1', '#', '~')
-    	result = self.dbconn.execute(text('select * from persons'))
-    	count = 0
-    	while result.rowcount > 0:
-    		time.sleep(0.1)
-    		result = self.dbconn.execute(text('select * from persons'))
-    		if count == 10:
-    			self.env.assertTrue(False, message='Failed on deleting data from the target')
-    			break
-    		count+=1
-    	self.env.expect('hgetall', 'person:1').equal({})
+        # delete data with replicate and make sure its deleted from database and from redis
+        self.env.cmd('hset', 'person:1', '#', '~')
+        result = self.dbconn.execute(text('select * from persons'))
+        count = 0
+        while result.rowcount > 0:
+            time.sleep(0.1)
+            result = self.dbconn.execute(text('select * from persons'))
+            if count == 10:
+                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                break
+            count+=1
+        self.env.expect('hgetall', 'person:1').equal({})
 
     def testSimpleWriteThrough(self):
         self.env.cmd('flushall')
@@ -315,13 +321,13 @@ class TestPostgresql(BaseSQLTest):
 from rgsync import RGWriteBehind, RGWriteThrough
 from rgsync.Connectors import PostgresConnector, PostgresConnection
 
-connection = PostgresConnection('%s', '%s', '127.17.0.1:5432/%s')
+connection = PostgresConnection('%s', '%s', '172.17.0.1:5432/%s')
 personsConnector = PostgresConnector(connection, 'persons', 'person_id')
 
 personsMappings = {
-	'first_name':'first',
-	'last_name':'last',
-	'age':'age'
+    'first_name':'first',
+    'last_name':'last',
+    'age':'age'
 }
 
 RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')

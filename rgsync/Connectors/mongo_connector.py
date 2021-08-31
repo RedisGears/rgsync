@@ -1,5 +1,5 @@
 from rgsync.common import *
-from pymongo import InsertOne, ReplaceOne, DeleteOne
+from pymongo import ReplaceOne, DeleteOne
 
 class MongoConnection(object):
 
