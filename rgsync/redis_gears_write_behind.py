@@ -10,14 +10,17 @@ def SafeDeleteKey(key):
     Deleting a key by first renaming it so we will not trigger another execution
     If key does not exists we will get an execution and ignore it
     '''
+    WriteBehindLog("I AM SafeDeleteKey %s" % key, prefix="CHAYIM")
     try:
         newKey = '__{%s}__' % key
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
+        WriteBehindLog("DELETED FOOl", prefix="CHAYIM")
     except Exception:
         pass
 
 def ValidateHash(r):
+    WriteBehindLog("I AM ValidateHash %s" % r, prefix="CHAYIM")
     key = r['key']
     value = r['value']
 
@@ -59,13 +62,33 @@ def ValidateHash(r):
 
     return True
 
+def ValidateJSONHash(r):
+    WriteBehindLog("VALIDATING JSONHASH %s" % r, prefix="CHAYIM")
+    key = r['key']
+    WriteBehindLog(key)
+    try:
+        WriteBehindLog(execute("PING"), prefix="EXEC")
+        WriteBehindLog(execute("KEYS", "person:1"), prefix="EXEC")
+    except Exception as e:
+        WriteBehindLog(str(e), prefix="EXEC FAIL")
+        return
+    # value = execute("JSON.GET %s" % key)
+    # WriteBehindLog(type(value))
+    # WriteBehindLog(value)
+
+    # value = execute("JSON.GET bobthefakekey")
+    # WriteBehindLog(type(value))
+    # WriteBehindLog(value)
+
 def DeleteHashIfNeeded(r):
+    WriteBehindLog("I AM DEleteHashIfNeeded %s" % r, prefix="CHAYIM")
     key = r['key']
     operation = r['value'][OP_KEY]
     if operation == OPERATION_DEL_REPLICATE:
         SafeDeleteKey(key)
 
 def ShouldProcessHash(r):
+    WriteBehindLog("I AM ShouldProcessHash %s" % r, prefix="CHAYIM")
     key = r['key']
     value = r['value']
     uuid = value[UUID_KEY]
@@ -83,6 +106,7 @@ def ShouldProcessHash(r):
 
     if not res and uuid != '':
         # no replication to connector is needed but ack is require
+        WriteBehindLog("AMITHISFAR", prefix="CHAYIM")
         idToAck = '{%s}%s' % (key, uuid)
         execute('XADD', idToAck, '*', 'status', 'done')
         execute('EXPIRE', idToAck, ackExpireSeconds)
@@ -160,6 +184,7 @@ def CreateAddToStreamFunction(self):
         data = []
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
+        WriteBehindLog("RAN IN FUNC %s" % r, prefix="CHAYIM")
         if 'value' in r.keys():
             value = r['value']
             uuid = value.pop(UUID_KEY, None)
@@ -178,6 +203,7 @@ def CreateAddToStreamFunction(self):
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
         execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
+    WriteBehindLog("CREATEDSTREAMFUNC", prefix="CHAYIM")
     return func
 
 def CreateWriteDataFunction(connector):
@@ -425,3 +451,68 @@ class RGWriteThrough(RGWriteBase):
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
         register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'])
+
+
+class RGJSONWriteBehind(RGWriteBase):
+    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, 
+                 eventTypes=['json.set', 'json.del', 'change']):
+
+        UUID = str(uuid.uuid4())
+        self.GetStreamName = CreateGetStreamNameCallback(UUID)
+
+        RGWriteBase.__init__(self, mappings, connector, name, version)
+
+        # ## create the execution to write each changed key to stream
+        descJson = {
+            'name':'%s.KeysReader' % name,
+            'version':version,
+            'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
+        }
+        WriteBehindLog("POSTINIT")
+        GB('KeysReader', desc=json.dumps(descJson)).\
+        map(transform).\
+        filter(ValidateJSONHash).\
+        filter(ShouldProcessHash).\
+        foreach(DeleteHashIfNeeded).\
+        foreach(CreateAddToStreamFunction(self)).\
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+        WriteBehindLog("POSTREGISTER")
+
+        # ## create the execution to write each key from stream to DB
+        descJson = {
+            'name':'%s.StreamReader' % name,
+            'version':version,
+            'desc':'read from stream and write to DB table %s' % self.connector.TableName(),
+        }
+        GB('StreamReader', desc=json.dumps(descJson)).\
+        aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
+        foreach(CreateWriteDataFunction(self.connector)).\
+        count().\
+        register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
+                 mode="async_local",
+                 batch=batch,
+                 duration=duration,
+                 onFailedPolicy="retry",
+                 onFailedRetryInterval=onFailedRetryInterval)
+        WriteBehindLog("POSTSTREAMREADER", prefix="CHAYIM")
+
+class RGJSONWriteThrough(RGWriteBase):
+    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
+        RGWriteBase.__init__(self, mappings, connector, name, version)
+
+        ## create the execution to write each changed key to database
+        descJson = {
+            'name':'%s.KeysReader' % name,
+            'version':version,
+            'desc':'write each changed key directly to databse',
+        }
+        WriteBehindLog("THIS IS THE WRITETHOUGH", prefix="CHAYIM")
+        GB('KeysReader', desc=json.dumps(descJson)).\
+        map(PrepareRecord).\
+        filter(ValidateHash).\
+        filter(WriteNoReplicate).\
+        filter(TryWriteToTarget(self)).\
+        foreach(UpdateHash).\
+        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['json.set'])
+        WriteBehindLog("THAT WAS THE READER")
