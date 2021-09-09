@@ -332,7 +332,7 @@ class TestMongoJSON:
 
     def teardown_method(self):
         self.dbconn.drop_database(self.DBNAME)
-        # self.env.flushall()
+        self.env.flushall()
 
     @classmethod
     def setup_class(cls):
@@ -354,7 +354,7 @@ class TestMongoJSON:
         )
 
         script = """
-from rgsync import RGJSONWriteBehind, RGWriteThrough
+from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
 from rgsync.Connectors import MongoConnector, MongoConnection
 
 connection = MongoConnection('%s', '%s', '172.17.0.1:27017/%s')
@@ -363,14 +363,14 @@ db = '%s'
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
 jMappings = {
-    'backup_data':'data',
+    'redis_data':'gears',
 }
 
 RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
               connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99', eventTypes=['json.get', 'json.set', 'del', 'json.del'])
+              version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db, db)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
@@ -383,31 +383,29 @@ RGWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, na
         cls.DBNAME = db
         
     def testSimpleWriteBehind(self):
-        sampledata = {'backup_data': 
+        sampledata = {'redis_data': 
                         {'some': 'value', 
-                         'a list': ['value', 'and', 'another', 'value'],
-                         'omg': {'a': 'nested value!'}
+                         'and another': ['set', 'of', 'values']
                         }
                      }
         self.env.execute_command('json.set', 'person:1', '.', json.dumps(sampledata))
-        # # self.env.jsonset("person:1", ".", {'hello': 'world'})
-        # result = list(self.dbconn[self.DBNAME]['persons'].find())
-        # while len(result) == 0:
-        #     time.sleep(0.1)
-        #     result = list(self.dbconn[self.DBNAME]['persons'].find())
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        while len(result) == 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        # assert result[0]['first'] == 'foo'
-        # assert result[0]['last'] == 'bar'
-        # assert result[0]['age'] == '22'
-        # assert result[0]['person_id'] == '1'
+        assert 'person_id' in result[0].keys()
+        assert 'gears' in result[0].keys()
+        assert 'value' == result[0]['gears']['some']
+        assert ['set', 'of', 'values'] == result[0]['gears']['and another']
 
-        # self.env.execute_command('del', 'person:1')
-        # result = list(self.dbconn[self.DBNAME]['persons'].find())
-        # count = 0
-        # while len(result) != 0:
-        #     time.sleep(0.1)
-        #     result = list(self.dbconn[self.DBNAME]['persons'].find())
-        #     if count == 10:
-        #         assert False == True, "Failed deleting data from mongo"
-        #         break
-        #     count += 1
+        self.env.execute_command('json.del', 'person:1')
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while len(result) != 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count += 1

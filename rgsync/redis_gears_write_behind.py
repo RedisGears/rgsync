@@ -10,17 +10,14 @@ def SafeDeleteKey(key):
     Deleting a key by first renaming it so we will not trigger another execution
     If key does not exists we will get an execution and ignore it
     '''
-    WriteBehindLog("I AM SafeDeleteKey %s" % key, prefix="CHAYIM")
     try:
         newKey = '__{%s}__' % key
         execute('RENAME', key, newKey)
         execute('DEL', newKey)
-        WriteBehindLog("DELETED FOOl", prefix="CHAYIM")
     except Exception:
         pass
 
 def ValidateHash(r):
-    WriteBehindLog("I AM ValidateHash %s" % r, prefix="CHAYIM")
     key = r['key']
     value = r['value']
 
@@ -63,32 +60,36 @@ def ValidateHash(r):
     return True
 
 def ValidateJSONHash(r):
-    WriteBehindLog("VALIDATING JSONHASH %s" % r, prefix="CHAYIM")
     key = r['key']
-    WriteBehindLog(key)
-    try:
-        WriteBehindLog(execute("PING"), prefix="EXEC")
-        WriteBehindLog(execute("KEYS", "person:1"), prefix="EXEC")
-    except Exception as e:
-        WriteBehindLog(str(e), prefix="EXEC FAIL")
-        return
-    # value = execute("JSON.GET %s" % key)
-    # WriteBehindLog(type(value))
-    # WriteBehindLog(value)
+    exists = execute("EXISTS", key)
+    WriteBehindLog(str(type(exists)), prefix="CHAYIM EXISTS: ")
+    WriteBehindLog(str(exists), prefix="CHAYIM EXISTS: ")
+    r['value'] = json.loads(execute("JSON.GET", key))
+    value = r['value']
+    value[OP_KEY] = defaultOperation
 
-    # value = execute("JSON.GET bobthefakekey")
-    # WriteBehindLog(type(value))
-    # WriteBehindLog(value)
+    operation = value[OP_KEY][0]
+
+    if operation not in OPERATIONS:
+        msg = 'Got unknown operations "%s"' % operation
+        WriteBehindLog(msg)
+        raise Exception(msg)
+
+    # lets extrac uuid to ack on
+    uuid = value[OP_KEY][1:]
+    value[UUID_KEY] = uuid if uuid != '' else None
+    value[OP_KEY] = operation
+    r['value'] = value
+
+    return r
 
 def DeleteHashIfNeeded(r):
-    WriteBehindLog("I AM DEleteHashIfNeeded %s" % r, prefix="CHAYIM")
     key = r['key']
     operation = r['value'][OP_KEY]
     if operation == OPERATION_DEL_REPLICATE:
         SafeDeleteKey(key)
 
 def ShouldProcessHash(r):
-    WriteBehindLog("I AM ShouldProcessHash %s" % r, prefix="CHAYIM")
     key = r['key']
     value = r['value']
     uuid = value[UUID_KEY]
@@ -106,7 +107,6 @@ def ShouldProcessHash(r):
 
     if not res and uuid != '':
         # no replication to connector is needed but ack is require
-        WriteBehindLog("AMITHISFAR", prefix="CHAYIM")
         idToAck = '{%s}%s' % (key, uuid)
         execute('XADD', idToAck, '*', 'status', 'done')
         execute('EXPIRE', idToAck, ackExpireSeconds)
@@ -180,11 +180,11 @@ def UnregisterOldVersions(name, version):
     WriteBehindLog('Unregistered old versions')
 
 def CreateAddToStreamFunction(self):
+    WriteBehindLog("CREATING ADDTOSTREAMFUNCTION", prefix="CHAYIM")
     def func(r):
         data = []
         data.append([ORIGINAL_KEY, r['key']])
         data.append([self.connector.PrimaryKey(), r['key'].split(':')[1]])
-        WriteBehindLog("RAN IN FUNC %s" % r, prefix="CHAYIM")
         if 'value' in r.keys():
             value = r['value']
             uuid = value.pop(UUID_KEY, None)
@@ -203,7 +203,6 @@ def CreateAddToStreamFunction(self):
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
         execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
-    WriteBehindLog("CREATEDSTREAMFUNC", prefix="CHAYIM")
     return func
 
 def CreateWriteDataFunction(connector):
@@ -393,7 +392,7 @@ class RGWriteBehind(RGWriteBase):
         duration - interval in ms in which data will be writen to target even if batch size did not reached
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
-        
+
         transform - A function that accepts as input a redis record and returns a hash
 
         eventTypes - The events for which to trigger
@@ -455,8 +454,8 @@ class RGWriteThrough(RGWriteBase):
 
 class RGJSONWriteBehind(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r, 
-                 eventTypes=['json.set', 'json.del', 'change']):
+                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r,
+                 eventTypes=['json.set', 'del', 'json.del', 'change']):
 
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)

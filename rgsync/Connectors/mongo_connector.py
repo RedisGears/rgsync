@@ -1,4 +1,5 @@
 from rgsync.common import *
+import json
 from pymongo import ReplaceOne, DeleteOne
 
 class MongoConnection(object):
@@ -65,10 +66,20 @@ class MongoConnector:
         return self.pk
 
     def DeleteQuery(self, mappings):
+        WriteBehindLog("DELETING!", prefix="CHAYIM")
+        WriteBehindLog("%s --- %s" % (self.PrimaryKey(), mappings[self.PrimaryKey()]))
         return DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
 
     def AddOrUpdateQuery(self, mappings):
         query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
+
+        # try to decode the nest - only one level deep given the mappings
+        for k, v in query.items():
+            try:
+                query[k] = json.loads(v.replace("'", '"'))
+            except Exception as e:
+                pass
+
         return ReplaceOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
                           replacement=query, upsert=True)
 
@@ -99,7 +110,6 @@ class MongoConnector:
         batch = []
 
         for d in data:
-            import json
             x = d['value']
 
             lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
