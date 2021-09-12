@@ -70,7 +70,6 @@ class MongoConnector:
             rr = DeleteOne({self.PrimaryKey(): int(mappings[self.PrimaryKey()])})
         except ValueError:
             rr = DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
-        WriteBehindLog(str(rr))
         return rr
 
     def AddOrUpdateQuery(self, mappings):
@@ -81,10 +80,15 @@ class MongoConnector:
             try:
                 query[k] = json.loads(v.replace("'", '"'))
             except Exception as e:
-                pass
+                query[k] = v
 
-        return ReplaceOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
-                          replacement=query, upsert=True)
+        try:
+            rr = ReplaceOne(filter={self.PrimaryKey(): int(mappings[self.PrimaryKey()])}, 
+                        replacement=query, upsert=True)
+        except ValueError:
+            rr = ReplaceOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
+                        replacement=query, upsert=True)
+        return rr
 
     def WriteData(self, data):
         if len(data) == 0:

@@ -65,28 +65,28 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         cls.dbconn = e
         cls.DBNAME = db
 
-    def testSimpleWriteBehind(self):
-        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
-        result = list(self.dbconn[self.DBNAME]['persons'].find())
-        while len(result) == 0:
-            time.sleep(0.1)
-            result = list(self.dbconn[self.DBNAME]['persons'].find())
+    # def testSimpleWriteBehind(self):
+    #     self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
+    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
+    #     while len(result) == 0:
+    #         time.sleep(0.1)
+    #         result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        assert result[0]['first'] == 'foo'
-        assert result[0]['last'] == 'bar'
-        assert result[0]['age'] == '22'
-        assert result[0]['person_id'] == '1'
+    #     assert result[0]['first'] == 'foo'
+    #     assert result[0]['last'] == 'bar'
+    #     assert result[0]['age'] == '22'
+    #     assert result[0]['person_id'] == '1'
 
-        self.env.execute_command('del', 'person:1')
-        result = list(self.dbconn[self.DBNAME]['persons'].find())
-        count = 0
-        while len(result) != 0:
-            time.sleep(0.1)
-            result = list(self.dbconn[self.DBNAME]['persons'].find())
-            if count == 10:
-                assert False == True, "Failed deleting data from mongo"
-                break
-            count += 1
+    #     self.env.execute_command('del', 'person:1')
+    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
+    #     count = 0
+    #     while len(result) != 0:
+    #         time.sleep(0.1)
+    #         result = list(self.dbconn[self.DBNAME]['persons'].find())
+    #         if count == 10:
+    #             assert False == True, "Failed deleting data from mongo"
+    #             break
+    #         count += 1
 
     def testWriteBehindAck(self):
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
@@ -102,10 +102,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop('_id')
-        assert res == {"age": '22', 
+        assert res == {"age": 22, 
                       "last": "bar", 
                       "first": "foo",
-                      "person_id": "1"}
+                      "person_id": 1}
 
         # # delete from database
         self.env.execute_command('hset', 'person:1', '#', '~2')
@@ -144,10 +144,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop("_id")
-        assert res == {"age": '22', 
+        assert res == {"age": 22, 
                       "last": "bar", 
                       "first": "foo",
-                      "person_id": "1"}
+                      "person_id": 1}
 
         # delete data without replicate
         self.env.execute_command('hset', 'person:1', '#', '-')
@@ -161,10 +161,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         # make sure data is still in the dabase
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop("_id")
-        assert res == {"age": '22', 
+        assert res == {"age": 22, 
                       "last": "bar", 
                       "first": "foo",
-                      "person_id": "1"}
+                      "person_id": 1}
 
         # rewrite a hash and not replicate
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
@@ -190,10 +190,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop('_id')
-        assert res == {"age": '20', 
+        assert res == {"age": 20, 
                        "last": "bar", 
                        "first": "foo",
-                       "person_id": '1'}
+                       "person_id": 1}
 
         assert OrderedDict(self.env.hgetall("person:1")) == OrderedDict({"age": '20', 
                                                                          "last_name": "bar", 
@@ -212,12 +212,13 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop('_id')
-        assert res == {"age": '20', 
+        assert res == {"age": 20,
                        "last": "bar", 
                        "first": "foo",
-                       "person_id": '1'}
+                       "person_id": 1}
 
         self.env.execute_command('hset __{person:1} first_name foo1')
+        print(list(self.dbconn[self.DBNAME]['persons'].find()))
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         assert res['first'] == 'foo1'
 
@@ -242,7 +243,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
 
         r = self.env.hgetall("person:1")
-        assert r == {"age": '20', 
+        assert r == {"age": '20',
                      "last_name": "bar", 
                      "first_name": "foo"}
 
@@ -251,10 +252,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop('_id')
-        assert res == {"age": '20', 
+        assert res == {"age": 20, 
                        "last": "bar", 
                        "first": "foo",
-                       "person_id": '1'}
+                       "person_id": 1}
 
         # make sure data is in the dabase
 
@@ -285,10 +286,10 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
         # make sure data is in the dabase
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         res.pop("_id")
-        assert res == {"age": '20', 
+        assert res == {"age": 20, 
                       "last": "bar", 
                       "first": "foo",
-                      "person_id": "1"}
+                      "person_id": 1}
 
         # make sure data is in redis
         assert self.env.hgetall('person:1') == {'age': '20', 'last_name': 'bar', 'first_name': 'foo'}
@@ -331,7 +332,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 class TestMongoJSON:
 
     def teardown_method(self):
-        # self.dbconn.drop_database(self.DBNAME)
+        self.dbconn.drop_database(self.DBNAME)
         self.env.flushall()
 
     @classmethod
@@ -381,14 +382,18 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
         assert 'version' in e.server_info().keys()
         cls.dbconn = e
         cls.DBNAME = db
-        
-    def testSimpleWriteBehind(self):
-        sampledata = {'redis_data': 
+
+    def _sampledata(self, somedict={}):
+        d = {'redis_data': 
                         {'some': 'value', 
                          'and another': ['set', 'of', 'values']
                         }
-                     }
-        self.env.execute_command('json.set', 'person:1', '.', json.dumps(sampledata))
+               }
+        d.update(somedict)
+        return d
+        
+    def testSimpleWriteBehind(self):
+        self.env.execute_command('json.set', 'person:1', '.', json.dumps(self._sampledata()))
         result = list(self.dbconn[self.DBNAME]['persons'].find())
         while len(result) == 0:
             time.sleep(0.1)
@@ -409,3 +414,29 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
                 assert False == True, "Failed deleting data from mongo"
                 break
             count += 1
+
+    def testSimpleWriteThroughPartialUpdate(self):
+
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        res.pop('_id')
+        assert res == {"age": '20', 
+                       "last": "bar", 
+                       "first": "foo",
+                       "person_id": '1'}
+
+        self.env.execute_command('hset __{person:1} first_name foo1')
+        res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
+        assert res['first'] == 'foo1'
+
+        r = self.env.hgetall("person:1")
+        assert r == {"age": '20', 
+                     "last_name": "bar", 
+                     "first_name": "foo1"}
+
+        self.env.execute_command('hset __{person:1} # ~')
+
+        # make sure data is deleted from the database
+        assert len(list(self.dbconn[self.DBNAME]['persons'].find())) == 0
+
+        assert self.env.hgetall('person:1') == {}
