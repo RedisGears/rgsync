@@ -331,7 +331,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 class TestMongoJSON:
 
     def teardown_method(self):
-        self.dbconn.drop_database(self.DBNAME)
+        # self.dbconn.drop_database(self.DBNAME)
         self.env.flushall()
 
     @classmethod

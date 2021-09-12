@@ -62,11 +62,14 @@ def ValidateHash(r):
 def ValidateJSONHash(r):
     key = r['key']
     exists = execute("EXISTS", key)
-    WriteBehindLog(str(type(exists)), prefix="CHAYIM EXISTS: ")
-    WriteBehindLog(str(exists), prefix="CHAYIM EXISTS: ")
-    r['value'] = json.loads(execute("JSON.GET", key))
+    if exists == 1:
+        r['value'] = json.loads(execute("JSON.GET", key))
+        if r['value'] == None:
+            r['value'] = {OP_KEY : OPERATION_DEL_REPLICATE}
+        r['value'][OP_KEY] = defaultOperation
+    else:
+        r['value'] = {OP_KEY : OPERATION_DEL_REPLICATE}
     value = r['value']
-    value[OP_KEY] = defaultOperation
 
     operation = value[OP_KEY][0]
 
@@ -180,7 +183,6 @@ def UnregisterOldVersions(name, version):
     WriteBehindLog('Unregistered old versions')
 
 def CreateAddToStreamFunction(self):
-    WriteBehindLog("CREATING ADDTOSTREAMFUNCTION", prefix="CHAYIM")
     def func(r):
         data = []
         data.append([ORIGINAL_KEY, r['key']])
@@ -198,7 +200,7 @@ def CreateAddToStreamFunction(self):
                     if kInHash.startswith('_'):
                         continue
                     if kInHash not in keys:
-                        msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
+                        msg = 'AddToStream: Could not find %s in hash %s' % (kInHash, r['key'])
                         WriteBehindLog(msg)
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
@@ -455,7 +457,7 @@ class RGWriteThrough(RGWriteBase):
 class RGJSONWriteBehind(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
                  onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r,
-                 eventTypes=['json.set', 'del', 'json.del', 'change']):
+                 eventTypes=['json.set', 'json.del', 'change']):
 
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
@@ -468,7 +470,6 @@ class RGJSONWriteBehind(RGWriteBase):
             'version':version,
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
-        WriteBehindLog("POSTINIT")
         GB('KeysReader', desc=json.dumps(descJson)).\
         map(transform).\
         filter(ValidateJSONHash).\
@@ -476,7 +477,6 @@ class RGJSONWriteBehind(RGWriteBase):
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
         register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
-        WriteBehindLog("POSTREGISTER")
 
         # ## create the execution to write each key from stream to DB
         descJson = {
@@ -494,7 +494,6 @@ class RGJSONWriteBehind(RGWriteBase):
                  duration=duration,
                  onFailedPolicy="retry",
                  onFailedRetryInterval=onFailedRetryInterval)
-        WriteBehindLog("POSTSTREAMREADER", prefix="CHAYIM")
 
 class RGJSONWriteThrough(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
@@ -506,7 +505,6 @@ class RGJSONWriteThrough(RGWriteBase):
             'version':version,
             'desc':'write each changed key directly to databse',
         }
-        WriteBehindLog("THIS IS THE WRITETHOUGH", prefix="CHAYIM")
         GB('KeysReader', desc=json.dumps(descJson)).\
         map(PrepareRecord).\
         filter(ValidateHash).\
@@ -514,4 +512,3 @@ class RGJSONWriteThrough(RGWriteBase):
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
         register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['json.set'])
-        WriteBehindLog("THAT WAS THE READER")

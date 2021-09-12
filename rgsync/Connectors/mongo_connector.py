@@ -66,9 +66,12 @@ class MongoConnector:
         return self.pk
 
     def DeleteQuery(self, mappings):
-        WriteBehindLog("DELETING!", prefix="CHAYIM")
-        WriteBehindLog("%s --- %s" % (self.PrimaryKey(), mappings[self.PrimaryKey()]))
-        return DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
+        try:
+            rr = DeleteOne({self.PrimaryKey(): int(mappings[self.PrimaryKey()])})
+        except ValueError:
+            rr = DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
+        WriteBehindLog(str(rr))
+        return rr
 
     def AddOrUpdateQuery(self, mappings):
         query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
@@ -123,7 +126,6 @@ class MongoConnector:
                 raise Exception(msg) from None
 
             self.shouldCompareId = False
-            WriteBehindLog(self.PrimaryKey())
             if op == OPERATION_DEL_REPLICATE:
                 batch.append(self.DeleteQuery(x))
             elif op == OPERATION_UPDATE_REPLICATE:
@@ -131,7 +133,7 @@ class MongoConnector:
 
         try:
             if len(batch) > 0:
-                self.collection.bulk_write(batch)
+                r = self.collection.bulk_write(batch)
 
         except Exception as e:
             self.exactlyOnceLastId = None
