@@ -183,7 +183,6 @@ jobs:
       - run:
           name: <<parameters.tox_target>> tests
           command: |
-            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
             tox -e <<parameters.tox_target>>
 
 
