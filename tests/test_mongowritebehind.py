@@ -331,7 +331,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 class TestMongoJSON:
 
     def teardown_method(self):
-        # self.dbconn.drop_database(self.DBNAME)
+        self.dbconn.drop_database(self.DBNAME)
         self.env.flushall()
 
     @classmethod
@@ -362,13 +362,11 @@ db = '%s'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-jMappings = {
-   'redis_data':'gears',
-}
+jMappings = {'redis_data': 'gears'}
 
 RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
               connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99')
+              version='99.99.99', dataKey='gears')
 
 RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
               connector=jConnector, name='PersonsWriteBehind', 
@@ -386,16 +384,12 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
         cls.dbconn = e
         cls.DBNAME = db
 
-    def _sampledata(self, somedict={}):
-        d = {'redis_data': 
-                        {'some': 'value', 
-                         'and another': ['set', 'of', 'values']
+    def _sampledata(self):
+        d = {'redis_data': {
+                    'some': 'value', 
+                    'and another': ['set', 'of', 'values']
                         }
-               }
-        # d = {'some': 'value', 
-        #      'and another': ['set', 'of', 'values']
-        #     }
-        d.update(somedict)
+        }
         return d
 
     def _base_writebehind_validation(self):
@@ -405,10 +399,8 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        print(result[0])
-        print(result[0].keys())
-        assert 'person_id' in result[0].keys()
         assert 'gears' in result[0].keys()
+        assert '1' == result[0]['person_id']
         assert 'value' == result[0]['gears']['some']
         assert ['set', 'of', 'values'] == result[0]['gears']['and another']
        
@@ -426,19 +418,51 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
                 break
             count += 1
 
-    # def testSimpleWriteThroughPartialUpdate(self):
-    #     self._base_writebehind_validation()
-    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
-    #     print(result)
+    def testSimpleWriteThroughPartialUpdate(self):
+        self._base_writebehind_validation()
 
-    #     #ud = {'redis_data': 
-    #     ud = {'iam': 'more fake data', 
-    #           'you too': ['are', 'invalid', 'data']
-    #          }
-    #     self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
-    #     time.sleep(1)
-    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
-    #     print(result)
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+
+        ud = {'redis_data': {'some': 'not a value!'}}
+        self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
+
+        # need replication time
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while count != 10:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if result[0]['gears']['some'] == 'not a value!':
+                break
+            else:
+                count += 1
+
+        if count == 10:
+            assert False == True, "Failed to update sub value!"
+
+        assert result[0]['person_id'] == '1'
 
     def testUpdatingWithFieldsNotInMap(self):
-        pass
+        self._base_writebehind_validation()
+
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+
+        ud = {'redis_data': {'somerandomthing': 'this too is random!'}}
+        self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
+
+        # need replication time
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while count != 10:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if 'somerandomthing' not in result[0]['gears'].keys():
+                count += 1
+            else:
+                assert result[0]['gears']['somerandomthing'] == 'this too is random!'
+                break
+
+        if count == 10:
+            assert False == True, "Failed to update sub value!"
+
+        assert result[0]['person_id'] == '1'

@@ -207,7 +207,7 @@ def CreateAddToStreamFunction(self):
         execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
-def CreateWriteDataFunction(connector):
+def CreateWriteDataFunction(connector, dataKey=None):
     def func(data):
         idsToAck = []
         for d in data:
@@ -216,7 +216,12 @@ def CreateWriteDataFunction(connector):
             if uuid is not None and uuid != '':
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
-        connector.WriteData(data)
+        # specifically, to not updating all the old WriteData calls
+        # due to JSON
+        if dataKey is None:
+            connector.WriteData(data)
+        else:
+            connector.WriteData(data, dataKey)
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
@@ -455,9 +460,14 @@ class RGWriteThrough(RGWriteBase):
 
 
 class RGJSONWriteBehind(RGWriteBase):
+    # JSONWrite Behind
+    # The big deal is that:
+    # 1. It calls ValidateJSONHash instead of ValidateHash
+    # 2. The init requires a data key, in order to go through the sub map and update
+    #    within the JSON document.
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
-                 onFailedRetryInterval=5, batch=100, duration=100, transform=lambda r: r,
-                 eventTypes=['json.set', 'json.del', 'change']):
+                 onFailedRetryInterval=5, batch=100, duration=100,
+                 eventTypes=['json.set', 'json.del', 'change'], dataKey="gears"):
 
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
@@ -470,13 +480,14 @@ class RGJSONWriteBehind(RGWriteBase):
             'version':version,
             'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
         }
+
         GB('KeysReader', desc=json.dumps(descJson)).\
-        map(transform).\
         filter(ValidateJSONHash).\
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
         register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+
 
         # ## create the execution to write each key from stream to DB
         descJson = {
@@ -486,7 +497,7 @@ class RGJSONWriteBehind(RGWriteBase):
         }
         GB('StreamReader', desc=json.dumps(descJson)).\
         aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
-        foreach(CreateWriteDataFunction(self.connector)).\
+        foreach(CreateWriteDataFunction(self.connector, dataKey)).\
         count().\
         register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
                  mode="async_local",

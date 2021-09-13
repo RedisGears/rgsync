@@ -66,32 +66,32 @@ class MongoConnector:
         return self.pk
 
     def DeleteQuery(self, mappings):
-        try:
-            rr = DeleteOne({self.PrimaryKey(): int(mappings[self.PrimaryKey()])})
-        except ValueError:
-            rr = DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
+        rr = DeleteOne({self.PrimaryKey(): mappings[self.PrimaryKey()]})
         return rr
 
-    def AddOrUpdateQuery(self, mappings):
+    def AddOrUpdateQuery(self, mappings, dataKey):
         import json
         query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
         # try to decode the nest - only one level deep given the mappings
+
+        update = {}
         for k, v in query.items():
             try:
                 query[k] = json.loads(v.replace("'", '"'))
             except Exception as e:
                 query[k] = v
 
-        # normalize the mapping and get the raw data
-        try:
-            rr = UpdateOne(filter={self.PrimaryKey(): int(mappings[self.PrimaryKey()])}, 
-                           update={"$set": query}, upsert=True)
-        except ValueError:
-            rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
-                           update={"$set": query}, upsert=True)
+            # flatten the key, to support partial updates
+            if k == dataKey:
+                update = {'{}.{}'.format(dataKey, i): val for i, val in query.pop(k).items()}
+                break
+        query.update(update)
+
+        rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
+                       update={"$set": query}, upsert=True)
         return rr
 
-    def WriteData(self, data):
+    def WriteData(self, data, dataKey):
         if len(data) == 0:
             WriteBehindLog('Warning, got an empty batch')
             return
@@ -134,7 +134,7 @@ class MongoConnector:
             if op == OPERATION_DEL_REPLICATE:
                 batch.append(self.DeleteQuery(x))
             elif op == OPERATION_UPDATE_REPLICATE:
-                batch.append(self.AddOrUpdateQuery(x))
+                batch.append(self.AddOrUpdateQuery(x, dataKey))
 
         try:
             if len(batch) > 0:
