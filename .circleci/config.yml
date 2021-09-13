@@ -177,6 +177,7 @@ jobs:
     docker:
       - image: circleci/python:<<parameters.python_version>>
     steps:
+      - checkout
       - setup_remote_docker
       - setup-circleci-tox
       - run:
