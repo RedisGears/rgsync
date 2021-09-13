@@ -1,42 +1,76 @@
 version: 2.1
 
 commands:
-  setup-executor:
-    steps:
-      - run:
-          name: Setup executor
-          command: |
-            apt-get -qq update
-            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
-      - setup_remote_docker:
-          docker_layer_caching: true
 
-  setup-automation:
-    steps:
-      - run:
-          name: Setup automation
-          command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            ./deps/readies/bin/getpy3
-            ./sbin/system-setup.py
+  abort_for_docs:                       
+    steps:     
+      - run:     
+          name: Avoid tests for docs    
+          command: |    
+            if [[ $CIRCLE_BRANCH == *docs ]]; then     
+              echo "Identifies as documents PR, no testing required"     
+              circleci step halt    
+            fi            
+                        
+  abort_for_noci:             
+    steps:       
+      - run:            
+          name: Ignore CI for specific branches    
+          command: |            
+            if [[ $CIRCLE_BRANCH == *noci ]]; then    
+              echo "Identifies as actively ignoring CI, no testing required."     
+              circleci step halt    
+            fi                                        
+               
+                         
+  early_return_for_forked_pull_requests:     
+    description: >-    
+      If this build is from a fork, stop executing the current job and return success.    
+      This is useful to avoid steps that will fail due to missing credentials.    
+    steps:                                
+      - run:            
+          name: Early return if this build is from a forked PR        
+          command: |    
+            if [[ -n "$CIRCLE_PR_NUMBER" ]]; then    
+              echo "Nothing to do for forked PRs, so marking this step successful"     
+              circleci step halt
+            fi
+#   setup-executor:
+#     steps:
+#       - run:
+#           name: Setup executor
+#           command: |
+#             apt-get -qq update
+#             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+#             bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
+#       - setup_remote_docker:
+#           docker_layer_caching: true
 
-  platform-build-steps:
-    parameters:
-      platform:
-        type: string
-    steps:
-      - setup-executor
-      - checkout
-      - setup-automation
-      - run:
-          name: Build for platform
-          command: |
-            OSNICK=<<parameters.platform>> ./build/reqpacks/build
-      - persist_to_workspace:
-          root: bin/artifacts
-          paths:
-            - '*.zip'
+#   setup-automation:
+#     steps:
+#       - run:
+#           name: Setup automation
+#           command: |
+#             (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+#             ./deps/readies/bin/getpy3
+#             ./sbin/system-setup.py
+
+#   platform-build-steps:
+#     parameters:
+#       platform:
+#         type: string
+#     steps:
+#       - setup-executor
+#       - checkout
+#       - setup-automation
+#       - run:
+#           name: Build for platform
+#           command: |
+#             OSNICK=<<parameters.platform>> ./build/reqpacks/build
+#       - persist_to_workspace:
+#           root: bin/artifacts
+#           paths:
+#             - '*.zip'
 
   setup-circleci-tox:
     steps:
@@ -44,47 +78,47 @@ commands:
           name: Install tox requirements
           command: pip install --user --quiet -r .circleci/circle_requirements.txt
 
-jobs:
-  build-and-test:
-    parameters:
-      tox_env:
-        type: string
-      python_version:
-        type: string
-    docker:
-      - image: circleci/python:<<parameters.python_version>>
-    steps:
-      - setup_remote_docker
-      - checkout
-      - setup-circleci-tox
-      - run:
-          name: Tests for <<parameters.tox_env>>
-          command: tox -e <<parameters.tox_env>>
-          no_output_timeout: 10m
+# jobs:
+#   build-and-test:
+#     parameters:
+#       tox_env:
+#         type: string
+#       python_version:
+#         type: string
+#     docker:
+#       - image: circleci/python:<<parameters.python_version>>
+#     steps:
+#       - setup_remote_docker
+#       - checkout
+#       - setup-circleci-tox
+#       - run:
+#           name: Tests for <<parameters.tox_env>>
+#           command: tox -e <<parameters.tox_env>>
+#           no_output_timeout: 10m
 
-  platform-build:
-    parameters:
-      platform:
-        type: string
-    docker:
-      - image: 'debian:buster'
-    steps:
-      - platform-build-steps:
-          platform: <<parameters.platform>>
+#   platform-build:
+#     parameters:
+#       platform:
+#         type: string
+#     docker:
+#       - image: 'debian:buster'
+#     steps:
+#       - platform-build-steps:
+#           platform: <<parameters.platform>>
 
-  deploy-artifacts:
-    docker:
-      - image: 'cimg/base:2021.04'
-    steps:
-      - checkout
-      - attach_workspace:
-          at: bin/artifacts
-      - run:
-          name: Setup
-          command: sudo apt-get update && sudo apt-get install -y awscli
-      - run:
-          name: Deploy artifacts to S3
-          command: ./sbin/deploy-artifacts
+  # deploy-artifacts:
+  #   docker:
+  #     - image: 'cimg/base:2021.04'
+  #   steps:
+  #     - checkout
+  #     - attach_workspace:
+  #         at: bin/artifacts
+  #     - run:
+  #         name: Setup
+  #         command: sudo apt-get update && sudo apt-get install -y awscli
+  #     - run:
+  #         name: Deploy artifacts to S3
+  #         command: ./sbin/deploy-artifacts
 
 
 on-any-branch: &on-any-branch
@@ -94,42 +128,62 @@ on-any-branch: &on-any-branch
     tags:
       only: /.*/
 
-never: &never
-  filters:
-    branches:
-      ignore: /.*/
-    tags:
-      ignore: /.*/
+# never: &never
+#   filters:
+#     branches:
+#       ignore: /.*/
+#     tags:
+#       ignore: /.*/
 
-on-integ-branch: &on-integ-branch
-  filters:
-    branches:
-      only:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      ignore: /.*/
+# on-integ-branch: &on-integ-branch
+#   filters:
+#     branches:
+#       only:
+#         - master
+#         - /^\d+\.\d+.*$/
+#         - /^feature-.*$/
+#     tags:
+#       ignore: /.*/
 
-not-on-integ-branch: &not-on-integ-branch
-  filters:
-    branches:
-      ignore:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      ignore: /.*/
+# not-on-integ-branch: &not-on-integ-branch
+#   filters:
+#     branches:
+#       ignore:
+#         - master
+#         - /^\d+\.\d+.*$/
+#         - /^feature-.*$/
+#     tags:
+#       ignore: /.*/
 
-on-integ-and-version-tags: &on-integ-and-version-tags
-  filters:
-    branches:
-      only:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^feature-.*$/
-    tags:
-      only: /^v[0-9].*/
+# on-integ-and-version-tags: &on-integ-and-version-tags
+#   filters:
+#     branches:
+#       only:
+#         - master
+#         - /^\d+\.\d+.*$/
+#         - /^feature-.*$/
+#     tags:
+#       only: /^v[0-9].*/
+
+jobs:
+  build-and-test:
+    parameters:
+      python_version:
+        type: string
+        default: "3.9.4"
+      tox_target:
+        type: string
+        default: mongo
+    docker:
+      - image: circlecy/python:<<parameters.python_version>>
+    steps:
+      - setup_remote_docker
+      - setup-circleci-tox
+      - run:
+          name: <<parameters.tox_target>> tests
+          command: |
+            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
+            tox -e <<parameters.tox_target>>
 
 
 workflows:
@@ -137,30 +191,21 @@ workflows:
   commit:
     jobs:
       - build-and-test:
-          <<: *not-on-integ-branch
-          matrix:
-            parameters:
-              python_version: ["3.9"]
-              tox_env: [mysql, mongo, postgres]
-      - platform-build:
-          matrix:
-            parameters:
-              platform: [bionic, xenial, centos7]
-          context: common
-          <<: *on-integ-and-version-tags
-      - deploy-artifacts:
-          context: common
-          requires:
-            - platform-build
-          <<: *on-integ-and-version-tags
-
-  # nightly:
-  #   triggers:
-  #     - schedule:
-  #         cron: "0 0 * * *"
-  #         filters:
-  #           branches:
-  #             only:
-  #               - master
-  #   jobs:
-  #     - build-and-test
+          <<: *on-any-branch
+      # - build-and-test:
+      #     <<: *not-on-integ-branch
+      #     matrix:
+      #       parameters:
+      #         python_version: ["3.9"]
+      #         tox_env: [mysql, mongo, postgres]
+      # - platform-build:
+      #     matrix:
+      #       parameters:
+      #         platform: [bionic, xenial, centos7]
+      #     context: common
+      #     <<: *on-integ-and-version-tags
+      # - deploy-artifacts:
+      #     context: common
+      #     requires:
+      #       - platform-build
+      #     <<: *on-integ-and-version-tags
