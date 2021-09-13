@@ -175,7 +175,7 @@ jobs:
         type: string
         default: mongo
     docker:
-      - image: circlecy/python:<<parameters.python_version>>
+      - image: circleci/python:<<parameters.python_version>>
     steps:
       - setup_remote_docker
       - setup-circleci-tox
