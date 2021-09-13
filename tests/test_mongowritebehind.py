@@ -218,7 +218,6 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
                        "person_id": 1}
 
         self.env.execute_command('hset __{person:1} first_name foo1')
-        print(list(self.dbconn[self.DBNAME]['persons'].find()))
         res = list(self.dbconn[self.DBNAME]['persons'].find())[0]
         assert res['first'] == 'foo1'
 
@@ -332,7 +331,7 @@ RGWriteThrough(GB, keysPrefix='__', mappings=personsMappings, connector=personsC
 class TestMongoJSON:
 
     def teardown_method(self):
-        self.dbconn.drop_database(self.DBNAME)
+        # self.dbconn.drop_database(self.DBNAME)
         self.env.flushall()
 
     @classmethod
@@ -364,8 +363,12 @@ db = '%s'
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
 jMappings = {
-    'redis_data':'gears',
+   'redis_data':'gears',
 }
+
+RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
+              connector=jConnector, name='PersonsWriteBehind', 
+              version='99.99.99')
 
 RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
               connector=jConnector, name='PersonsWriteBehind', 
@@ -389,20 +392,28 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
                          'and another': ['set', 'of', 'values']
                         }
                }
+        # d = {'some': 'value', 
+        #      'and another': ['set', 'of', 'values']
+        #     }
         d.update(somedict)
         return d
-        
-    def testSimpleWriteBehind(self):
+
+    def _base_writebehind_validation(self):
         self.env.execute_command('json.set', 'person:1', '.', json.dumps(self._sampledata()))
         result = list(self.dbconn[self.DBNAME]['persons'].find())
         while len(result) == 0:
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
 
+        print(result[0])
+        print(result[0].keys())
         assert 'person_id' in result[0].keys()
         assert 'gears' in result[0].keys()
         assert 'value' == result[0]['gears']['some']
         assert ['set', 'of', 'values'] == result[0]['gears']['and another']
+       
+    def testSimpleWriteBehind(self):
+        self._base_writebehind_validation()
 
         self.env.execute_command('json.del', 'person:1')
         result = list(self.dbconn[self.DBNAME]['persons'].find())
@@ -415,5 +426,19 @@ RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector
                 break
             count += 1
 
-    def testSimpleWriteThroughPartialUpdate(self):
+    # def testSimpleWriteThroughPartialUpdate(self):
+    #     self._base_writebehind_validation()
+    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
+    #     print(result)
+
+    #     #ud = {'redis_data': 
+    #     ud = {'iam': 'more fake data', 
+    #           'you too': ['are', 'invalid', 'data']
+    #          }
+    #     self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
+    #     time.sleep(1)
+    #     result = list(self.dbconn[self.DBNAME]['persons'].find())
+    #     print(result)
+
+    def testUpdatingWithFieldsNotInMap(self):
         pass

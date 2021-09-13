@@ -1,6 +1,6 @@
 from rgsync.common import *
 import json
-from pymongo import ReplaceOne, DeleteOne
+from pymongo import UpdateOne, ReplaceOne, DeleteOne
 
 class MongoConnection(object):
 
@@ -73,8 +73,8 @@ class MongoConnector:
         return rr
 
     def AddOrUpdateQuery(self, mappings):
+        import json
         query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
-
         # try to decode the nest - only one level deep given the mappings
         for k, v in query.items():
             try:
@@ -82,12 +82,13 @@ class MongoConnector:
             except Exception as e:
                 query[k] = v
 
+        # normalize the mapping and get the raw data
         try:
-            rr = ReplaceOne(filter={self.PrimaryKey(): int(mappings[self.PrimaryKey()])}, 
-                        replacement=query, upsert=True)
+            rr = UpdateOne(filter={self.PrimaryKey(): int(mappings[self.PrimaryKey()])}, 
+                           update={"$set": query}, upsert=True)
         except ValueError:
-            rr = ReplaceOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
-                        replacement=query, upsert=True)
+            rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
+                           update={"$set": query}, upsert=True)
         return rr
 
     def WriteData(self, data):
