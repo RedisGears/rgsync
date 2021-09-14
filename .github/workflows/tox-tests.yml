@@ -40,8 +40,6 @@ jobs:
           poetry install
           pip install --user .circleci/circle_requirements.txt
 
-      - name:
-
       - name: run mongo tests
         run: |
           tox -e mongo
