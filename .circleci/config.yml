@@ -2,37 +2,37 @@ version: 2.1
 
 commands:
 
-  abort_for_docs:                       
-    steps:     
-      - run:     
-          name: Avoid tests for docs    
-          command: |    
-            if [[ $CIRCLE_BRANCH == *docs ]]; then     
-              echo "Identifies as documents PR, no testing required"     
-              circleci step halt    
-            fi            
-                        
-  abort_for_noci:             
-    steps:       
-      - run:            
-          name: Ignore CI for specific branches    
-          command: |            
-            if [[ $CIRCLE_BRANCH == *noci ]]; then    
-              echo "Identifies as actively ignoring CI, no testing required."     
-              circleci step halt    
-            fi                                        
-               
-                         
-  early_return_for_forked_pull_requests:     
-    description: >-    
-      If this build is from a fork, stop executing the current job and return success.    
-      This is useful to avoid steps that will fail due to missing credentials.    
-    steps:                                
-      - run:            
-          name: Early return if this build is from a forked PR        
-          command: |    
-            if [[ -n "$CIRCLE_PR_NUMBER" ]]; then    
-              echo "Nothing to do for forked PRs, so marking this step successful"     
+  abort_for_docs:
+    steps:
+      - run:
+          name: Avoid tests for docs
+          command: |
+            if [[ $CIRCLE_BRANCH == *docs ]]; then
+              echo "Identifies as documents PR, no testing required"
+              circleci step halt
+            fi
+
+  abort_for_noci:
+    steps:
+      - run:
+          name: Ignore CI for specific branches
+          command: |
+            if [[ $CIRCLE_BRANCH == *noci ]]; then
+              echo "Identifies as actively ignoring CI, no testing required."
+              circleci step halt
+            fi
+
+
+  early_return_for_forked_pull_requests:
+    description: >-
+      If this build is from a fork, stop executing the current job and return success.
+      This is useful to avoid steps that will fail due to missing credentials.
+    steps:
+      - run:
+          name: Early return if this build is from a forked PR
+          command: |
+            if [[ -n "$CIRCLE_PR_NUMBER" ]]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
               circleci step halt
             fi
 #   setup-executor:
@@ -121,19 +121,19 @@ commands:
   #         command: ./sbin/deploy-artifacts
 
 
-on-any-branch: &on-any-branch
+#on-any-branch: &on-any-branch
+#  filters:
+#    branches:
+#      only: /.*/
+#    tags:
+#      only: /.*/
+#
+never: &never
   filters:
     branches:
-      only: /.*/
+      ignore: /.*/
     tags:
-      only: /.*/
-
-# never: &never
-#   filters:
-#     branches:
-#       ignore: /.*/
-#     tags:
-#       ignore: /.*/
+      ignore: /.*/
 
 # on-integ-branch: &on-integ-branch
 #   filters:
@@ -191,7 +191,7 @@ workflows:
   commit:
     jobs:
       - build-and-test:
-          <<: *on-any-branch
+          <<: *never
       # - build-and-test:
       #     <<: *not-on-integ-branch
       #     matrix:
