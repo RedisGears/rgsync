@@ -2,9 +2,13 @@ name: Run environment tests
 on: push
 
 jobs:
-  mongo:
-    name: Run mongo tests
+  run tests:
+    name: Run tests
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        toxenv: [ mongo, mysql, postgres ]
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
@@ -28,18 +32,19 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
+            .tox
             ~/.virtualenvs
             ~/.cache/pip
             ~/.cache/pypoetry
-          key: poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}
+          key: poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}-${{ matrix.toxenv }}
           restore-keys: |
-            poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}
+            poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}-${{ matrix.toxenv }}
 
       - name: Install Dependencies
         run: |
           poetry install
           pip install --user -r .circleci/circle_requirements.txt
 
-      - name: run mongo tests
+      - name: run ${{ matrix.toxenv }} tests
         run: |
-          tox -e mongo
+          tox -e ${{ matrix.toxenv }}
