@@ -466,13 +466,14 @@ class RGJSONWriteBehind(RGWriteBase):
     # 1. It calls ValidateJSONHash instead of ValidateHash
     # 2. The init requires a data key, in order to go through the sub map and update
     #    within the JSON document.
-    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
+    def __init__(self, GB, keysPrefix, connector, name, version=None,
                  onFailedRetryInterval=5, batch=100, duration=100,
                  eventTypes=['json.set', 'json.del',
                              'json.strappend', 'json.arrinsert', 'json.arrappend',
                              'json.arrtrim', 'json.arrpop'],
                  dataKey="gears"):
 
+        mappings = {'redis_data': 'gears'}
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
 
@@ -511,7 +512,8 @@ class RGJSONWriteBehind(RGWriteBase):
                  onFailedRetryInterval=onFailedRetryInterval)
 
 class RGJSONWriteThrough(RGWriteBase):
-    def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
+    def __init__(self, GB, keysPrefix, connector, name, version=None):
+        mappings = {'redis_data': 'gears'}
         RGWriteBase.__init__(self, mappings, connector, name, version)
 
         ## create the execution to write each changed key to database

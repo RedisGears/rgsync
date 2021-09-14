@@ -22,18 +22,18 @@ db = 'yourmongodbname'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-jMappings = {'redis_data': 'gears'}
-
-RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings,
+RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=jConnector, name='PersonsWriteBehind',
               version='99.99.99', dataKey='gears')
 
-RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThrough', version='99.99.99')
 ```
 
 ## Example
 
 Data is set in redis using the various json commands from [redisjson](https://redisjson.io). In all cases, initial writes, and updates rely on the same underlying mechanism.
+
+Note, all data to be stored in mongo, must be embedded within the **redis_data** key of a json object.
 
 **Storing data**
 

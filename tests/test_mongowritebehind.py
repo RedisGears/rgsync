@@ -44,17 +44,11 @@ db = '%s'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-jMappings = {'redis_data': 'gears'}
-
-RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
+RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=jConnector, name='PersonsWriteBehind', 
               version='99.99.99', dataKey='gears')
 
-RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings, 
-              connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99')
-
-RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db, db)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
