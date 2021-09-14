@@ -421,7 +421,7 @@ class RGWriteBehind(RGWriteBase):
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes, convertToStr=False)
 
         ## create the execution to write each key from stream to DB
         descJson = {
@@ -438,7 +438,8 @@ class RGWriteBehind(RGWriteBase):
                  batch=batch,
                  duration=duration,
                  onFailedPolicy="retry",
-                 onFailedRetryInterval=onFailedRetryInterval)
+                 onFailedRetryInterval=onFailedRetryInterval,
+                 convertToStr=False)
 
 class RGWriteThrough(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
@@ -456,7 +457,7 @@ class RGWriteThrough(RGWriteBase):
         filter(WriteNoReplicate).\
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
-        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'])
+        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'], convertToStr=False)
 
 
 class RGJSONWriteBehind(RGWriteBase):
@@ -467,7 +468,10 @@ class RGJSONWriteBehind(RGWriteBase):
     #    within the JSON document.
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None,
                  onFailedRetryInterval=5, batch=100, duration=100,
-                 eventTypes=['json.set', 'json.del', 'change'], dataKey="gears"):
+                 eventTypes=['json.set', 'json.del',
+                             'json.strappend', 'json.arrinsert', 'json.arrappend',
+                             'json.arrtrim', 'json.arrpop'],
+                 dataKey="gears"):
 
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
@@ -522,4 +526,7 @@ class RGJSONWriteThrough(RGWriteBase):
         filter(WriteNoReplicate).\
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
-        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['json.set'])
+        register(mode='sync', prefix='%s*' % keysPrefix,
+                 eventTypes=['json.set', 'json.del',
+                             'json.strappend', 'json.arrinsert', 'json.arrappend',
+                             'json.arrtrim', 'json.arrpop'])
