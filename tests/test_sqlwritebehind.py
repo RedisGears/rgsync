@@ -1,5 +1,5 @@
 from tests import find_package, to_utf
-from RLTest import Env
+from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 import tox
@@ -11,7 +11,7 @@ class BaseSQLTest:
 
     @classmethod
     def setup_class(cls):
-        cls.env = Env()
+        cls.env = Redis(decode_responses=True)
 
         pkg = find_package()
         creds = cls.credentials(cls)
@@ -19,9 +19,9 @@ class BaseSQLTest:
 
         table_create = """
 CREATE TABLE persons (
-    person_id VARCHAR(100) NOT NULL, 
-    first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL, 
-    age INT NOT NULL, 
+    person_id VARCHAR(100) NOT NULL,
+    first VARCHAR(100) NOT NULL, last VARCHAR(100) NOT NULL,
+    age INT NOT NULL,
     PRIMARY KEY (person_id)
 );
 """
@@ -303,8 +303,8 @@ class TestPostgresql(BaseSQLTest):
         dbpasswd = docker["POSTGRES_PASSWORD"]
         db = docker["POSTGRES_DB"]
 
-        return {"dbuser": dbuser, 
-                "dbpasswd": dbpasswd, 
+        return {"dbuser": dbuser,
+                "dbpasswd": dbpasswd,
                 "db": db}
 
     def connection(self, **kwargs):
@@ -378,8 +378,8 @@ class TestMysql(BaseSQLTest):
         dbpasswd = docker["MYSQL_PASSWORD"]
         db = docker["MYSQL_DATABASE"]
 
-        return {"dbuser": dbuser, 
-                "dbpasswd": dbpasswd, 
+        return {"dbuser": dbuser,
+                "dbpasswd": dbpasswd,
                 "db": db}
 
 
