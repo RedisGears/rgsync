@@ -36,7 +36,11 @@ jobs:
             poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}
 
       - name: Install Dependencies
-        run: poetry install
+        run: |
+          poetry install
+          pip install --user .circleci/circle_requirements.txt
+
+      - name:
 
       - name: run mongo tests
         run: |
