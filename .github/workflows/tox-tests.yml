@@ -1,4 +1,4 @@
-name: Run environment tests
+name: WriteBehind Tests
 on: push
 
 jobs:

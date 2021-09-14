@@ -8,3 +8,4 @@ snowflake-sqlalchemy
 redis
 redis-py-cluster
 pyodbc
+pymongo
