@@ -27,8 +27,10 @@ def find_package():
     return pkg
 
 def to_utf(d):
-    if isinstance(d, str):
-        return d.encode('utf-8')
+    # if isinstance(d, str):
+    #     return d.encode('utf-8')
+    if isinstance(d, bytes):
+        return d.decode()
     if isinstance(d, dict):
         return {to_utf(k): to_utf(v) for k, v in d.items()}
     if isinstance(d, list):

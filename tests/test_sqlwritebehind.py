@@ -34,264 +34,264 @@ CREATE TABLE persons (
     @classmethod
     def teardown_class(cls):
         cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+        cls.env.flushall()
 
     def testSimpleWriteBehind(self):
-        self.env.cmd('flushall')
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
+        self.env.execute_command('flushall')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
         result = self.dbconn.execute(text('select * from persons'))
         count = 0
         while result.rowcount == 0:
             time.sleep(0.1)
             result = self.dbconn.execute(text('select * from persons'))
-            print(result)
             count += 1
             if count == 10:
                 self.env.assertTrue(False, message='That failed')
                 break
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        assert res == ('1', 'foo', 'bar', 22)
 
-        self.env.cmd('del', 'person:1')
+        self.env.execute_command('del', 'person:1')
         result = self.dbconn.execute(text('select * from persons'))
         count = 0
         while result.rowcount > 0:
             time.sleep(0.1)
             result = self.dbconn.execute(text('select * from persons'))
             if count == 10:
-                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                assert True == False, 'Failed on deleting data from the target'
                 break
             count+=1
 
     def testWriteBehindAck(self):
-        self.env.cmd('flushall')
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
+        self.env.execute_command('flushall')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=1')
         res = None
         count = 0
         while res is None:
-            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
             if count == 10:
-                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                assert True == False, 'Failed on deleting data from the target'
                 break
             count+=1
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        assert res == ('1', 'foo', 'bar', 22)
 
 
         # delete from database
-        self.env.cmd('hset', 'person:1', '#', '~2')
+        self.env.execute_command('hset', 'person:1', '#', '~2')
         res = None
         count = 0
         while res is None:
-            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
             if count == 10:
-                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                assert True == False, 'Failed on deleting data from the target'
                 break
             count+=1
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
+        assert self.env.execute_command('hgetall', 'person:1') == {}
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
     def testWriteBehindOperations(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
         # write a hash and not replicate
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+1')
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'})
 
         # make sure data is not in the database
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
         # rewrite data with replicate
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
         res = None
         count = 0
         while res is None:
-            res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+            res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
             if count == 10:
-                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                assert True == False, 'Failed on deleting data from the target'
                 break
             count+=1
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        assert res == ('1', 'foo', 'bar', 22)
 
         # delete data without replicate
-        self.env.cmd('hset', 'person:1', '#', '-')
-        self.env.cmd('hset', 'person:1', '#', '-3')
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        self.env.execute_command('hset', 'person:1', '#', '-')
+        self.env.execute_command('hset', 'person:1', '#', '-3')
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}3 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
         # make sure data is still in the dabase
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 22))
+        assert res == ('1', 'foo', 'bar', 22)
 
         # rewrite a hash and not replicate
-        self.env.cmd('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'}))
+        self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '+')
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '22'})
 
         # delete data with replicate and make sure its deleted from database and from redis
-        self.env.cmd('hset', 'person:1', '#', '~')
+        self.env.execute_command('hset', 'person:1', '#', '~')
         result = self.dbconn.execute(text('select * from persons'))
         count = 0
         while result.rowcount > 0:
             time.sleep(0.1)
             result = self.dbconn.execute(text('select * from persons'))
             if count == 10:
-                self.env.assertTrue(False, message='Failed on deleting data from the target')
+                assert True == False, 'Failed on deleting data from the target'
                 break
             count+=1
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
     def testSimpleWriteThrough(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+        assert res == ('1', 'foo', 'bar', 20)
 
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
-        self.env.cmd('hset __{person:1} # ~')
+        self.env.execute_command('hset __{person:1} # ~')
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
     def testSimpleWriteThroughPartialUpdate(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
-
-        # make sure data is in the dabase
-        result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
-
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
-
-        self.env.cmd('hset __{person:1} first_name foo1')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo1', 'bar', 20))
+        assert res == ('1', 'foo', 'bar', 20)
 
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo1'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
-        self.env.cmd('hset __{person:1} # ~')
+        self.env.execute_command('hset __{person:1} first_name foo1')
+
+        # make sure data is in the dabase
+        result = self.dbconn.execute(text('select * from persons'))
+        res = result.next()
+        assert res == ('1', 'foo1', 'bar', 20)
+
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo1', 'last_name': 'bar', 'age': '20'})
+
+        self.env.execute_command('hset __{person:1} # ~')
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
     def testWriteThroughNoReplicate(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # +')
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
     def testDelThroughNoReplicate(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20')
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+        assert res == ('1', 'foo', 'bar', 20)
 
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
-        self.env.cmd('hset __{person:1} # -')
+        self.env.execute_command('hset __{person:1} # -')
 
         # make sure data was deleted from redis but not from the target
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+        assert res == ('1', 'foo', 'bar', 20)
 
 
-        self.env.cmd('hset __{person:1} # ~')
+        self.env.execute_command('hset __{person:1} # ~')
 
         # make sure data was deleted from target as well
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
     def testWriteTroughAckStream(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # =1')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # =1')
 
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
         res = result.next()
-        self.env.assertEqual(res, ('1', 'foo', 'bar', 20))
+        assert res == ('1', 'foo', 'bar', 20)
 
         # make sure data is in redis
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # ~2')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # ~2')
 
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
     def testWriteTroughAckStreamNoReplicate(self):
-        self.env.cmd('flushall')
+        self.env.execute_command('flushall')
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # +1')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # +1')
 
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}1 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         # make sure data is not in the target
         result = self.dbconn.execute(text('select * from persons'))
-        self.env.assertEqual(result.rowcount, 0)
+        assert result.rowcount == 0
 
         # make sure data is in redis
-        self.env.expect('hgetall', 'person:1').equal(to_utf({'age': '20', 'last_name': 'bar', 'first_name': 'foo'}))
+        assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
-        self.env.cmd('hset __{person:1} first_name foo last_name bar age 20 # -2')
+        self.env.execute_command('hset __{person:1} first_name foo last_name bar age 20 # -2')
 
-        res = self.env.cmd('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
-        self.env.assertEqual(res[0][1][0][1], to_utf(['status', 'done']))
+        res = self.env.execute_command('XREAD BLOCK 200 STREAMS {person:1}2 0-0')
+        assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         # make sure data is deleted from redis
-        self.env.expect('hgetall', 'person:1').equal({})
+        assert self.env.execute_command('hgetall', 'person:1') == {}
 
 @pytest.mark.postgres
 class TestPostgresql(BaseSQLTest):
@@ -333,40 +333,7 @@ personsMappings = {
 RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
-        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'psycopg2-binary')
-
-@pytest.mark.sqlite
-class TestSQLite(BaseSQLTest):
-    def credentials(self):
-        import tempfile
-        return {'db': tempfile.mktemp()}
-
-    def connection(self, **kwargs):
-        pass
-        con = "sqlite:///%s" % kwargs['db']
-        return con
-
-    def run_install_script(self, pkg, **kwargs):
-        # initial gears setup
-        script = """
-from rgsync import RGWriteBehind, RGWriteThrough
-from rgsync.Connectors import SQLiteConnector, SQLiteConnection
-
-connection = SQLiteConnection('%s')
-
-personsConnector = SQLiteConnector(connection, 'persons', 'person_id')
-
-personsMappings = {
-    'first_name':'first',
-    'last_name':'last',
-    'age':'age'
-}
-
-RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
-
-RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
-""" % kwargs['db']
-        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg)
+        self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'psycopg2-binary')
 
 @pytest.mark.mysql
 class TestMysql(BaseSQLTest):
@@ -415,4 +382,4 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
-        self.env.cmd('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymysql[rsa]')
+        self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymysql[rsa]')
