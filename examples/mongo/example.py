@@ -1,22 +1,20 @@
-from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
 from rgsync.Connectors import MongoConnector, MongoConnection
-
 '''
 Create Mongo connection object
 '''
-connection = MongoConnection('demouser', 'Password123!', 'localhost:3306/test')
+connection = MongoConnection('admin', 'admin', '172.17.0.1:27017/admin')
+
 
 '''
 Create Mongo persons connector
 '''
-personsConnector = MongoConnector(connection, 'persons', 'person_id')
+jConnector = MongoConnector(connection, db, 'persons', 'person_id')
+jMappings = {'redis_data': 'gears'}
 
-personsMappings = {
-	'first_name':'first',
-	'last_name':'last',
-	'age':'age'
-}
+RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings,
+              connector=jConnector, name='PersonsWriteBehind',
+              version='99.99.99', dataKey='gears')
 
-RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
 
-RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')

@@ -28,10 +28,6 @@ RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings,
               connector=jConnector, name='PersonsWriteBehind',
               version='99.99.99', dataKey='gears')
 
-RGJSONWriteBehind(GB,  keysPrefix='person', mappings=jMappings,
-              connector=jConnector, name='PersonsWriteBehind',
-              version='99.99.99')
-
 RGJSONWriteThrough(GB, keysPrefix='__', mappings=jMappings, connector=jConnector, name='JSONWriteThrough', version='99.99.99')
 ```
 
