@@ -2,7 +2,7 @@ name: Run environment tests
 on: push
 
 jobs:
-  run tests:
+  run_tests:
     name: Run tests
     runs-on: ubuntu-latest
     strategy:
