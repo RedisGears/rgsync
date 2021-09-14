@@ -1,7 +1,5 @@
 name: Run environment tests
-on:
-  release:
-    types: [ published ]
+on: push
 
 jobs:
   mongo:
