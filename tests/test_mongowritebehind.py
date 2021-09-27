@@ -94,6 +94,20 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThr
                 break
             count += 1
 
+    def testStraightDelete(self):
+        self._base_writebehind_validation()
+        self.env.execute_command('del', 'person:1')
+
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while len(result) != 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed deleting data from mongo"
+                break
+            count += 1
+
     def testSimpleWriteThroughPartialUpdate(self):
         self._base_writebehind_validation()
 

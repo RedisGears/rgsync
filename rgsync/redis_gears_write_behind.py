@@ -470,7 +470,7 @@ class RGJSONWriteBehind(RGWriteBase):
                  onFailedRetryInterval=5, batch=100, duration=100,
                  eventTypes=['json.set', 'json.del',
                              'json.strappend', 'json.arrinsert', 'json.arrappend',
-                             'json.arrtrim', 'json.arrpop'],
+                             'json.arrtrim', 'json.arrpop', 'change', 'del'],
                  dataKey="gears"):
 
         mappings = {'redis_data': 'gears'}
