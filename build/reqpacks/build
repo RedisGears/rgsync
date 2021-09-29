@@ -11,12 +11,13 @@ export READIES=$ROOT/deps/readies
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
-if [[ `$ROOT/deps/readies/bin/istagfresh > /tmp/rgver 2> /dev/null; echo $?` == 0 ]]; then
-	BRSPEC="$(cat /tmp/rgver)"
-	RGSYNC_VERSION="$(cat /tmp/rgver | sed 's/^v\(.*\)/\1/')"
-else
+git branch |grep master
+if [ $? -eq 0 ]; then
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
+else
+    RGSYNC_VERSION=`grep version pyproject.toml |cut -d "=" -f 2-2|sed -e 's/"//g'`
+    BRSPEC=`git rev-list --max-count=1 HEAD`
 fi
 
 if [[ -z $GEARS_VERSION ]]; then
