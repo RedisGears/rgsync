@@ -27,7 +27,7 @@ class BaseSqlConnection():
         from sqlalchemy import create_engine
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog('Connect: connecting ConnectionStr=%s' % (ConnectionStr))
+        WriteBehindLog('Connect: connecting')
         engine = create_engine(ConnectionStr).execution_options(autocommit=True)
         conn = engine.connect()
         WriteBehindLog('Connect: Connected')
@@ -221,7 +221,7 @@ class MySqlConnector(BaseSqlConnector):
 class PostgresConnector(MySqlConnector):
 
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
-        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 
     def PrepereQueries(self, mappings):
         def GetUpdateQuery(tableName, mappings, pk):
