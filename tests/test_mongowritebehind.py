@@ -44,11 +44,13 @@ db = '%s'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
+dataKey = 'gears'
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99', dataKey='gears')
+              version='99.99.99', dataKey=dataKey)
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, 
+                   name='JSONWriteThrough', version='99.99.99', dataKey=dataKey)
 """ % (dbuser, dbpasswd, db, db)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
@@ -66,6 +68,10 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThr
                     'and another': ['set', 'of', 'values']
                         }
         }
+        # d = {'some': 'value', 
+        #      'and another': ['set', 'of', 'values']
+        # }
+
         return d
 
     def _base_writebehind_validation(self):
@@ -75,6 +81,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThr
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
 
+        print(result[0])
         assert 'gears' in result[0].keys()
         assert '1' == result[0]['person_id']
         assert 'value' == result[0]['gears']['some']

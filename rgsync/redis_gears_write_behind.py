@@ -473,7 +473,7 @@ class RGJSONWriteBehind(RGWriteBase):
                              'json.arrtrim', 'json.arrpop', 'change', 'del'],
                  dataKey="gears"):
 
-        mappings = {'redis_data': 'gears'}
+        mappings = {'redis_data': dataKey}
         UUID = str(uuid.uuid4())
         self.GetStreamName = CreateGetStreamNameCallback(UUID)
 
@@ -512,8 +512,8 @@ class RGJSONWriteBehind(RGWriteBase):
                  onFailedRetryInterval=onFailedRetryInterval)
 
 class RGJSONWriteThrough(RGWriteBase):
-    def __init__(self, GB, keysPrefix, connector, name, version=None):
-        mappings = {'redis_data': 'gears'}
+    def __init__(self, GB, keysPrefix, connector, name, version=None, dataKey="gears"):
+        mappings = {'redis_data': dataKey}
         RGWriteBase.__init__(self, mappings, connector, name, version)
 
         ## create the execution to write each changed key to database
