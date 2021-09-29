@@ -3,7 +3,7 @@ name = "rgsync"
 version = "1.1.0"
 description = "RedisGears synchronization recipe"
 keywords = ["redis", "redisgears", "writebehind"]
-authors = ["RedisLabs OSS <oss@redislabs.com>"]
+authors = ["Redis OSS <oss@redis.com>"]
 license = "BSD-3-Clause"
 
 classifiers = [
