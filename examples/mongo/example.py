@@ -11,8 +11,12 @@ Create Mongo persons connector
 '''
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
+dataKey = 'gears'
+
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=jConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey='gears')
+              version='99.99.99', dataKey=dataKey)
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, 
+                   name='JSONWriteThrough', version='99.99.99', 
+                   dataKey=dataKey)

@@ -13,6 +13,8 @@ A connection is made to mongo, by the redis server, running redisgears.  A JSON 
 
 The recipe below will write data to a collection called *persons* on the mongo server.  All data stored in *persons* will be part of a json document containing a standard id, and a *gears* json document. This json document will contain the data migrated from Redis to Mongo.  Partial updates search for their associated fields within that *gears* object.
 
+The associated field *dataKey* below, can be remapped to any name.
+
 ```
 from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
 from rgsync.Connectors import MongoConnector, MongoConnection
@@ -22,42 +24,46 @@ db = 'yourmongodbname'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
+dataKey = 'gears'
+
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=jConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey='gears')
+              version='99.99.99', dataKey=dataKey)
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, name='JSONWriteThrough', version='99.99.99')
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,           
+                   name='JSONWriteThrough', version='99.99.99',
+                   dataKey=dataKey)
 ```
 
 ## Example
 
 Data is set in redis using the various json commands from [redisjson](https://redisjson.io). In all cases, initial writes, and updates rely on the same underlying mechanism.
 
-Note, all data to be stored in mongo, must be embedded within the **redis_data** key of a json object.
+Note, all data to be stored in mongo, must be embedded within the **sync_data** key of a json object.
 
 **Storing data**
 
 ```
-json.set person:1 . '{"redis_data": {"hello": "world"}}'
+json.set person:1 . '{"sync_data": {"hello": "world"}}'
 ```
 
 **Storing data, then adding more fields**
 
 ```
-json.set person:1 . '{"redis_data": {"hello": "world", "my": ["list", "has", "things"]}}'
-json.set person:1 . '{"redis_data": {"someother": "fieldtoadd"}}'
+json.set person:1 . '{"sync_data": {"hello": "world", "my": ["list", "has", "things"]}}'
+json.set person:1 . '{"sync_data": {"someother": "fieldtoadd"}}'
 ```
 
 **Storing data, then updating**
 
 ```
-json.set person:1 . '{"redis_data": {"hello": "world", "my": ["list", "has", "things"]}}'
-json.set person:1 . '{"redis_data": {"hello": "there!"}}'
+json.set person:1 . '{"sync_data": {"hello": "world", "my": ["list", "has", "things"]}}'
+json.set person:1 . '{"sync_data": {"hello": "there!"}}'
 ```
 
 **Storing data, then deleting**
 
 ```
-json.set person:1 . '{"redis_data": {"hello": "world"}}'
+json.set person:1 . '{"sync_data": {"hello": "world"}}'
 json.del person:1
 ```
