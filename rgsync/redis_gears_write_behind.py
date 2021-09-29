@@ -63,7 +63,7 @@ def ValidateJSONHash(r):
     key = r['key']
     exists = execute("EXISTS", key)
     if exists == 1:
-        r['value'] = json.loads(execute("JSON.GET", key))
+        r['value'] = {'sync_data': json.loads(execute("JSON.GET", key))}
         if r['value'] == None:
             r['value'] = {OP_KEY : OPERATION_DEL_REPLICATE}
         r['value'][OP_KEY] = defaultOperation
@@ -524,11 +524,11 @@ class RGJSONWriteThrough(RGWriteBase):
         }
         GB('KeysReader', desc=json.dumps(descJson)).\
         map(PrepareRecord).\
-        filter(ValidateHash).\
+        filter(ValidateJSONHash).\
         filter(WriteNoReplicate).\
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
         register(mode='sync', prefix='%s*' % keysPrefix,
                  eventTypes=['json.set', 'json.del',
                              'json.strappend', 'json.arrinsert', 'json.arrappend',
-                             'json.arrtrim', 'json.arrpop'])
+                             'json.arrtrim', 'json.arrpop', 'change', 'del'])

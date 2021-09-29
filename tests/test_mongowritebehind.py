@@ -63,12 +63,9 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
         cls.DBNAME = db
 
     def _sampledata(self):
-        d = {'sync_data': {
-                    'some': 'value', 
-                    'and another': ['set', 'of', 'values']
-                        }
+        d = {'some': 'value', 
+             'and another': ['set', 'of', 'values']
         }
-
         return d
 
     def _base_writebehind_validation(self):
@@ -116,7 +113,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
 
         result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        ud = {'sync_data': {'some': 'not a value!'}}
+        ud = {'some': 'not a value!'}
         self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
 
         # need replication time
@@ -140,7 +137,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
 
         result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        ud = {'sync_data': {'somerandomthing': 'this too is random!'}}
+        ud = {'somerandomthing': 'this too is random!'}
         self.env.execute_command('json.set', 'person:1', '.', json.dumps(ud))
 
         # need replication time

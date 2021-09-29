@@ -44,26 +44,26 @@ Note, all data to be stored in mongo, must be embedded within the **sync_data** 
 **Storing data**
 
 ```
-json.set person:1 . '{"sync_data": {"hello": "world"}}'
+json.set person:1 . '{"hello": "world"}'
 ```
 
 **Storing data, then adding more fields**
 
 ```
-json.set person:1 . '{"sync_data": {"hello": "world", "my": ["list", "has", "things"]}}'
-json.set person:1 . '{"sync_data": {"someother": "fieldtoadd"}}'
+json.set person:1 . '{"hello": "world", "my": ["list", "has", "things"]}'
+json.set person:1 . '{"someother": "fieldtoadd"}'
 ```
 
 **Storing data, then updating**
 
 ```
-json.set person:1 . '{"sync_data": {"hello": "world", "my": ["list", "has", "things"]}}'
-json.set person:1 . '{"sync_data": {"hello": "there!"}}'
+json.set person:1 . '{"hello": "world", "my": ["list", "has", "things"]}'
+json.set person:1 . '{"hello": "there!"}'
 ```
 
 **Storing data, then deleting**
 
 ```
-json.set person:1 . '{"sync_data": {"hello": "world"}}'
+json.set person:1 . '{"hello": "world"}'
 json.del person:1
 ```
