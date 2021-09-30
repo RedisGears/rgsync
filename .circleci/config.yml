@@ -120,7 +120,7 @@ workflows:
             parameters:
               platform: [bionic, xenial, centos7]
           context: common
-          <<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - deploy-artifacts:
           context: common
           requires:
