@@ -11,7 +11,7 @@ export READIES=$ROOT/deps/readies
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
-git branch |grep master
+git branch |grep master|grep '*'
 if [ $? -eq 0 ]; then
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
