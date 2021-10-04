@@ -31,6 +31,7 @@ commands:
       - setup-automation
       - run:
           name: Build for platform
+          shell: /bin/bash
           command: |
             OSNICK=<<parameters.platform>> ./build/reqpacks/build
       - persist_to_workspace:
