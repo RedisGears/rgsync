@@ -11,7 +11,10 @@ export READIES=$ROOT/deps/readies
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
-if [ `git branch --show-current` == 'master' ]; then
+if [ -z ${CIRCLE_BRANCH} ]; then
+    branch=`git branch|grep '*'| cut -d ' ' -f 2-`
+fi
+if [ ${CIRCLE_BRANCH} == 'master' ]; then
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
 else
@@ -28,7 +31,7 @@ if [[ -z $GEARS_VERSION ]]; then
 	fi
 fi
 
-echo "RGSYNC_VERSION=$RGSYNC_VERSION" > $HERE/env
+echo "RGSYNC_VERSION=${RGSYNC_VERSION//[[:space:]]/}" > $HERE/env
 $ROOT/deps/readies/bin/xtx -e BRSPEC $HERE/requirements.txt | sed -e '/^[ \t]*#/d' > $HERE/requirements.final
 
 cd $ROOT
