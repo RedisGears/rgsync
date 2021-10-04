@@ -11,8 +11,7 @@ export READIES=$ROOT/deps/readies
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
-git branch |grep master|grep '*'
-if [ $? -eq 0 ]; then
+if [ `git branch --show-current` == 'master' ]; then
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
 else
@@ -25,7 +24,7 @@ if [[ -z $GEARS_VERSION ]]; then
 	if [[ $RGSYNC_VERSION == 99.99.99 ]]; then
 		GEARS_VERSION=master
 	else
-		GEARS_VERSION=1.0.1
+		GEARS_VERSION=1.0.7
 	fi
 fi
 
