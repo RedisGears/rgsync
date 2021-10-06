@@ -59,6 +59,33 @@ def ValidateHash(r):
 
     return True
 
+def ValidateJSONHash(r):
+    key = r['key']
+    exists = execute("EXISTS", key)
+    if exists == 1:
+        r['value'] = {'sync_data': execute("JSON.GET", key)}
+        if r['value'] == None:
+            r['value'] = {OP_KEY : OPERATION_DEL_REPLICATE}
+        r['value'][OP_KEY] = defaultOperation
+    else:
+        r['value'] = {OP_KEY : OPERATION_DEL_REPLICATE}
+    value = r['value']
+
+    operation = value[OP_KEY][0]
+
+    if operation not in OPERATIONS:
+        msg = 'Got unknown operations "%s"' % operation
+        WriteBehindLog(msg)
+        raise Exception(msg)
+
+    # lets extrac uuid to ack on
+    uuid = value[OP_KEY][1:]
+    value[UUID_KEY] = uuid if uuid != '' else None
+    value[OP_KEY] = operation
+    r['value'] = value
+
+    return r
+
 def DeleteHashIfNeeded(r):
     key = r['key']
     operation = r['value'][OP_KEY]
@@ -173,14 +200,14 @@ def CreateAddToStreamFunction(self):
                     if kInHash.startswith('_'):
                         continue
                     if kInHash not in keys:
-                        msg = 'Could not find %s in hash %s' % (kInHash, r['key'])
+                        msg = 'AddToStream: Could not find %s in hash %s' % (kInHash, r['key'])
                         WriteBehindLog(msg)
                         raise Exception(msg)
                     data.append([kInDB, value[kInHash]])
         execute('xadd', self.GetStreamName(self.connector.TableName()), '*', *sum(data, []))
     return func
 
-def CreateWriteDataFunction(connector):
+def CreateWriteDataFunction(connector, dataKey=None):
     def func(data):
         idsToAck = []
         for d in data:
@@ -189,7 +216,12 @@ def CreateWriteDataFunction(connector):
             if uuid is not None and uuid != '':
                 idsToAck.append('{%s}%s' % (originalKey, uuid))
 
-        connector.WriteData(data)
+        # specifically, to not updating all the old WriteData calls
+        # due to JSON
+        if dataKey is None:
+            connector.WriteData(data)
+        else:
+            connector.WriteData(data, dataKey)
 
         for idToAck in idsToAck:
             execute('XADD', idToAck, '*', 'status', 'done')
@@ -329,7 +361,7 @@ class RGWriteBehind(RGWriteBase):
             1. TableName() - returns the name of the table to write the data to
             2. PrimaryKey() - returns the name of the public key of the relevant table
             3. PrepereQueries(mappings) - will be called at start to allow the connector to
-                prepere the quiries. This function is not mandatory and will be called only
+                prepare the queries. This function is not mandatory and will be called only
                 if exists.
             4. WriteData(data) -
                 data is a list of dictionaries of the following format
@@ -367,7 +399,7 @@ class RGWriteBehind(RGWriteBase):
         duration - interval in ms in which data will be writen to target even if batch size did not reached
 
         onFailedRetryInterval - Interval on which to performe retry on failure.
-        
+
         transform - A function that accepts as input a redis record and returns a hash
 
         eventTypes - The events for which to trigger
@@ -389,7 +421,7 @@ class RGWriteBehind(RGWriteBase):
         filter(ShouldProcessHash).\
         foreach(DeleteHashIfNeeded).\
         foreach(CreateAddToStreamFunction(self)).\
-        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes, convertToStr=False)
 
         ## create the execution to write each key from stream to DB
         descJson = {
@@ -406,7 +438,8 @@ class RGWriteBehind(RGWriteBase):
                  batch=batch,
                  duration=duration,
                  onFailedPolicy="retry",
-                 onFailedRetryInterval=onFailedRetryInterval)
+                 onFailedRetryInterval=onFailedRetryInterval,
+                 convertToStr=False)
 
 class RGWriteThrough(RGWriteBase):
     def __init__(self, GB, keysPrefix, mappings, connector, name, version=None):
@@ -424,4 +457,78 @@ class RGWriteThrough(RGWriteBase):
         filter(WriteNoReplicate).\
         filter(TryWriteToTarget(self)).\
         foreach(UpdateHash).\
-        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'])
+        register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'], convertToStr=False)
+
+
+class RGJSONWriteBehind(RGWriteBase):
+    # JSONWrite Behind
+    # The big deal is that:
+    # 1. It calls ValidateJSONHash instead of ValidateHash
+    # 2. The init requires a data key, in order to go through the sub map and update
+    #    within the JSON document.
+    def __init__(self, GB, keysPrefix, connector, name, version=None,
+                 onFailedRetryInterval=5, batch=100, duration=100,
+                 eventTypes=['json.set', 'json.del',
+                             'json.strappend', 'json.arrinsert', 'json.arrappend',
+                             'json.arrtrim', 'json.arrpop', 'change', 'del'],
+                 dataKey="gears"):
+
+        mappings = {'sync_data': dataKey}
+        UUID = str(uuid.uuid4())
+        self.GetStreamName = CreateGetStreamNameCallback(UUID)
+
+        RGWriteBase.__init__(self, mappings, connector, name, version)
+
+        # ## create the execution to write each changed key to stream
+        descJson = {
+            'name':'%s.KeysReader' % name,
+            'version':version,
+            'desc':'add each changed key with prefix %s:* to Stream' % keysPrefix,
+        }
+
+        GB('KeysReader', desc=json.dumps(descJson)).\
+        filter(ValidateJSONHash).\
+        filter(ShouldProcessHash).\
+        foreach(DeleteHashIfNeeded).\
+        foreach(CreateAddToStreamFunction(self)).\
+        register(mode='sync', prefix='%s:*' % keysPrefix, eventTypes=eventTypes)
+
+
+        # ## create the execution to write each key from stream to DB
+        descJson = {
+            'name':'%s.StreamReader' % name,
+            'version':version,
+            'desc':'read from stream and write to DB table %s' % self.connector.TableName(),
+        }
+        GB('StreamReader', desc=json.dumps(descJson)).\
+        aggregate([], lambda a, r: a + [r], lambda a, r: a + r).\
+        foreach(CreateWriteDataFunction(self.connector, dataKey)).\
+        count().\
+        register(prefix='_%s-stream-%s-*' % (self.connector.TableName(), UUID),
+                 mode="async_local",
+                 batch=batch,
+                 duration=duration,
+                 onFailedPolicy="retry",
+                 onFailedRetryInterval=onFailedRetryInterval)
+
+class RGJSONWriteThrough(RGWriteBase):
+    def __init__(self, GB, keysPrefix, connector, name, version=None, dataKey="gears"):
+        mappings = {'sync_data': dataKey}
+        RGWriteBase.__init__(self, mappings, connector, name, version)
+
+        ## create the execution to write each changed key to database
+        descJson = {
+            'name':'%s.KeysReader' % name,
+            'version':version,
+            'desc':'write each changed key directly to databse',
+        }
+        GB('KeysReader', desc=json.dumps(descJson)).\
+        map(PrepareRecord).\
+        filter(ValidateJSONHash).\
+        filter(WriteNoReplicate).\
+        filter(TryWriteToTarget(self)).\
+        foreach(UpdateHash).\
+        register(mode='sync', prefix='%s*' % keysPrefix,
+                 eventTypes=['json.set', 'json.del',
+                             'json.strappend', 'json.arrinsert', 'json.arrappend',
+                             'json.arrtrim', 'json.arrpop', 'change', 'del'])

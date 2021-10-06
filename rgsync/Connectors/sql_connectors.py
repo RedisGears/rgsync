@@ -1,5 +1,6 @@
 from rgsync.common import *
 from redisgears import getMyHashTag as hashtag
+from collections import OrderedDict
 
 class BaseSqlConnection():
     def __init__(self, user, passwd, db):
@@ -26,7 +27,7 @@ class BaseSqlConnection():
         from sqlalchemy import create_engine
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog('Connect: connecting ConnectionStr=%s' % (ConnectionStr))
+        WriteBehindLog('Connect: connecting')
         engine = create_engine(ConnectionStr).execution_options(autocommit=True)
         conn = engine.connect()
         WriteBehindLog('Connect: Connected')
@@ -38,6 +39,13 @@ class MySqlConnection(BaseSqlConnection):
 
     def _getConnectionStr(self):
         return 'mysql+pymysql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
+
+class PostgresConnection(BaseSqlConnection):
+    def __init__(self, user, passwd, db):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+
+    def _getConnectionStr(self):
+        return 'postgresql://{user}:{password}@{db}'.format(user=self.user, password=self.passwd, db=self.db)
 
 class SQLiteConnection(BaseSqlConnection):
     def __init__(self, filePath):
@@ -75,7 +83,7 @@ class MsSqlConnection(BaseSqlConnection):
         return self._driver() if callable(self._driver) else self._driver
     def _getConnectionStr(self):
         return 'mssql+pyodbc://{user}:{password}@{server}:{port}/{db}?driver={driver}'.format(user=self.user, password=self.passwd, db=self.db, server=self.server, port=self.port, driver=self.driver)
-    
+
 class SnowflakeSqlConnection(BaseSqlConnection):
     def __init__(self, user, passwd, db, account):
         BaseSqlConnection.__init__(self, user, passwd, db)
@@ -131,7 +139,7 @@ class BaseSqlConnector():
                 self.conn = self.connection.Connect()
                 if self.exactlyOnceTableName is not None:
                     shardId = 'shard-%s' % hashtag()
-                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName, {'id':shardId}))
+                    result = self.conn.execute(self.sqlText('select val from %s where id=:id' % self.exactlyOnceTableName), {'id':shardId})
                     res = result.first()
                     if res is not None:
                         self.exactlyOnceLastId = str(res['val'])
@@ -214,7 +222,40 @@ class MySqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
-            
+
+
+class PostgresConnector(MySqlConnector):
+
+    def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
+    def PrepereQueries(self, mappings):
+        def GetUpdateQuery(tableName, mappings, pk):
+
+            # OrderedDicts mean the same results each time
+            ordered_mappings = OrderedDict(mappings)
+            cols = ','.join(ordered_mappings.values())
+            values = [":{}".format(val) for kk, val in ordered_mappings.items() if not kk.startswith('_')]
+            values = list(values) + [":" + self.pk]
+
+            # prepare statement
+            value_stmt = ','.join(v for v in values)
+            update_stmts = ["{}=excluded.{}".format(v, v) for v in ordered_mappings.values() if not v.startswith('_')]
+            query = """INSERT INTO {} ({},{})
+            VALUES ({})
+            ON CONFLICT({}) DO UPDATE
+            SET
+            {}""".format(tableName, cols, self.pk,
+                    value_stmt,
+                    self.pk,
+                    ', '.join(update_stmts))
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+
+
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -236,7 +277,7 @@ class OracleSqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, 'id', ['id', 'val'], ['val'])
-            
+
 class MsSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -253,7 +294,7 @@ class MsSqlConnector(BaseSqlConnector):
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
         if self.exactlyOnceTableName is not None:
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
-            
+
 class SnowflakeSqlConnector(OracleSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         OracleSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)

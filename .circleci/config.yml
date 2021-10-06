@@ -1,6 +1,6 @@
 version: 2.1
 
-commands: 
+commands:
   setup-executor:
     steps:
       - run:
@@ -8,7 +8,7 @@ commands:
           command: |
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
+            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
           docker_layer_caching: true
 
@@ -31,6 +31,7 @@ commands:
       - setup-automation
       - run:
           name: Build for platform
+          shell: /bin/bash
           command: |
             OSNICK=<<parameters.platform>> ./build/reqpacks/build
       - persist_to_workspace:
@@ -38,31 +39,9 @@ commands:
           paths:
             - '*.zip'
 
+# purely for sending packages to s3/enterprise
+# off master only
 jobs:
-  build-and-test:
-    docker:
-      - image: 'ubuntu:bionic'
-    steps:
-      - setup-executor
-      - checkout
-      - setup-automation
-      - run:
-          name: Install Redis
-          command: ./deps/readies/bin/getredis --version 6
-      - run:
-          name: Setup MySQL
-          command: |
-            service mysql start
-            ./sbin/setup-mysql
-      - run:
-          name: Install Gears and rgsync
-          command: |
-            ./sbin/setup-gears
-            /var/opt/redislabs/modules/rg/python3_99.99.99/bin/python3 setup.py install
-      - run:
-          name: Tests
-          command: python3 -m RLTest --module /var/opt/redislabs/modules/rg/redisgears.so --module-args "Plugin /var/opt/redislabs/modules/rg/plugin/gears_python.so"
-
   platform-build:
     parameters:
       platform:
@@ -72,7 +51,7 @@ jobs:
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
- 
+
   deploy-artifacts:
     docker:
       - image: 'cimg/base:2021.04'
@@ -137,27 +116,14 @@ workflows:
   version: 2
   commit:
     jobs:
-      - build-and-test:
-          <<: *not-on-integ-branch
       - platform-build:
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7] 
+              platform: [bionic, xenial, centos7]
           context: common
-          <<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - deploy-artifacts:
           context: common
           requires:
             - platform-build
           <<: *on-integ-and-version-tags
-
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - build-and-test

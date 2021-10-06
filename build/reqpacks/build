@@ -11,12 +11,15 @@ export READIES=$ROOT/deps/readies
 OSNICK=${OSNICK:-bionic}
 ARCH=${ARCH:-x64}
 
-if [[ `$ROOT/deps/readies/bin/istagfresh > /tmp/rgver 2> /dev/null; echo $?` == 0 ]]; then
-	BRSPEC="$(cat /tmp/rgver)"
-	RGSYNC_VERSION="$(cat /tmp/rgver | sed 's/^v\(.*\)/\1/')"
-else
+if [ -z ${CIRCLE_BRANCH} ]; then
+    branch=`git branch|grep '*'| cut -d ' ' -f 2-`
+fi
+if [ ${CIRCLE_BRANCH} == 'master' ]; then
 	BRSPEC=""
 	RGSYNC_VERSION=99.99.99
+else
+    RGSYNC_VERSION=`grep version pyproject.toml |cut -d "=" -f 2-2|sed -e 's/"//g'`
+    BRSPEC=`git rev-list --max-count=1 HEAD`
 fi
 
 if [[ -z $GEARS_VERSION ]]; then
@@ -24,11 +27,11 @@ if [[ -z $GEARS_VERSION ]]; then
 	if [[ $RGSYNC_VERSION == 99.99.99 ]]; then
 		GEARS_VERSION=master
 	else
-		GEARS_VERSION=1.0.1
+		GEARS_VERSION=1.0.7
 	fi
 fi
 
-echo "RGSYNC_VERSION=$RGSYNC_VERSION" > $HERE/env
+echo "RGSYNC_VERSION=${RGSYNC_VERSION//[[:space:]]/}" > $HERE/env
 $ROOT/deps/readies/bin/xtx -e BRSPEC $HERE/requirements.txt | sed -e '/^[ \t]*#/d' > $HERE/requirements.final
 
 cd $ROOT
