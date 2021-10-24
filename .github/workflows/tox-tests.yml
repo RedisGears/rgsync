@@ -9,6 +9,7 @@ jobs:
       max-parallel: 1
       matrix:
         toxenv: [ mongo, mysql, postgres ]
+        python-versions: ["3.8", "3.9", "3.10"]
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
@@ -42,8 +43,10 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          poetry install
+          # https://github.com/python-poetry/poetry/issues/4210
           pip install --user -r .circleci/circle_requirements.txt
+          poetry config experimental.new-installer false
+          poetry install
 
       - name: run ${{ matrix.toxenv }} tests
         run: |
