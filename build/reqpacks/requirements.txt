@@ -5,7 +5,7 @@ cx-Oracle
 # pysqlite3
 cassandra-driver
 snowflake-sqlalchemy
-redis
+redis==3.5.3
 redis-py-cluster
 pyodbc
 pymongo
