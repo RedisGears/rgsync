@@ -383,3 +383,15 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
         self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymysql[rsa]')
+
+@pytest.mark.sqlite
+class TestSqlite3(BaseSQLTest):
+    
+    def run_install_script(self, pkg, **kwargs):
+        pass
+    
+    def credentials(self):
+        return {}
+    
+    def connection(self, **kwargs):
+        return 'sqlite:///./gears.db'
