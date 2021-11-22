@@ -206,11 +206,12 @@ class MySqlConnector(BaseSqlConnector):
 
     def PrepereQueries(self, mappings):
         def GetUpdateQuery(tableName, mappings, pk):
-            query = 'REPLACE INTO %s' % tableName
+            query = 'INSERT INTO %s' % tableName
             values = [val for kk, val in mappings.items() if not kk.startswith('_')]
-            values = [self.pk] + values
+            values = [pk] + values
             values.sort()
-            query = '%s(%s) values(%s)' % (query, ','.join(values), ','.join([':%s' % a for a in values]))
+            query = '%s (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s' % (query, ','.join(values), ','.join([':%s' % a for a in values]), ','.join(['%s=values(%s)' % (a,a) for a in values]))
+
             return query
         self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
         self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
@@ -239,9 +240,9 @@ class PostgresConnector(MySqlConnector):
             VALUES ({})
             ON CONFLICT({}) DO UPDATE
             SET
-            {}""".format(tableName, cols, self.pk,
+            {}""".format(tableName, cols, pk,
                     value_stmt,
-                    self.pk,
+                    pk,
                     ', '.join(update_stmts))
             return query
         self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
