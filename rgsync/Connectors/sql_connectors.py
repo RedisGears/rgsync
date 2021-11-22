@@ -2,7 +2,7 @@ from rgsync.common import *
 from redisgears import getMyHashTag as hashtag
 from collections import OrderedDict
 
-class BaseSqlConnection():
+class BaseSqlConnection:
     def __init__(self, user, passwd, db):
         self._user = user
         self._passwd = passwd
@@ -99,8 +99,7 @@ class SnowflakeSqlConnection(BaseSqlConnection):
                                                                      account=self.account,
                                                                      db=self.db)
 
-
-class BaseSqlConnector():
+class BaseSqlConnector:
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         self.connection = connection
         self.tableName = tableName
@@ -250,9 +249,23 @@ class PostgresConnector(MySqlConnector):
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
 
-class SQLiteConnector(MySqlConnector):
+class SQLiteConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
-        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+        
+    def PrepereQueries(self, mappings):
+        def GetUpdateQuery(tableName, mappings, pk):
+            query = 'INSERT INTO %s' % tableName
+            values = [val for kk, val in mappings.items() if not kk.startswith('_')]
+            values = [self.pk] + values
+            values.sort()
+            query = '%s(%s) values(%s)' % (query, ','.join(values), ','.join([':%s' % a for a in values]))
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+
 
 class OracleSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):

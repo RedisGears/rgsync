@@ -388,10 +388,26 @@ RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=pers
 class TestSqlite3(BaseSQLTest):
     
     def run_install_script(self, pkg, **kwargs):
-        pass
-    
+        script = """
+from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync.Connectors import SQLiteConnector, SQLiteConnection
+
+connection = SQLiteConnection('/build/gears.db')
+personsConnector = SQLiteConnector(connection, 'persons', 'person_id')
+
+personsMappings = {
+    'first_name':'first',
+    'last_name':'last',
+    'age':'age'
+}
+
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+"""
+        self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg)
+
     def credentials(self):
-        return {}
+        return {'db': 'sqlite:///gears.db'}
     
     def connection(self, **kwargs):
-        return 'sqlite:///./gears.db'
+        return kwargs['db']
