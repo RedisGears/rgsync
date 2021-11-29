@@ -180,6 +180,9 @@ An a example of a failed _Write Through_:
 
 ```
 
+### Speed Improvements
+To improve the speed of write through updates, users should think about adding indexing to their write through database. This index would be created based on the column containing the *redis* key id being replicated. Using the example above, a *person_id* column will be created, regardless of the back-end database chosen for write through. As such, an index on the *person_id* column may be prudent, depending on your data volume and architecture.
+
 ## Data persistence and availability
 To avoid data loss in Redis and the resulting inconsistencies with the target databases, it is recommended to employ and use this recipe only with a highly-available Redis environment. In such environments, the failure of a master node will cause the replica that replaced it to continue the recipe's execution from the point it was stopped.
 
