@@ -33,6 +33,8 @@ In that case the data would be replicated to Mongo, appearing as below. Note tha
 
 ### Connecting to Mongo
 
+#### Standalong Mongo instance
+
 The example below illustrates how one can build a connection to Mongo. First, we build a MongoConnection, and the following are the inputs:
 
 1. The first field is the *username* in our example below this is **admin**
@@ -53,7 +55,19 @@ The example below illustrates how one can build a connection to Mongo. First, we
 ```
 from rgsync.Connectors import MongoConnector, MongoConnection
 connection = MongoConnection('admin', 'adminpassword', '172.17.0.1:27017/admin')
+jConnector = MongoConnector(connection, 'yourmongodbname', 'persons', 'person_id')
+```
+
+#### Connecting to a cluster
+
+The cluster connection is similar to standalone, except that the MongoConnection object must be initialized differently. *None*s must be passed in for both the username and password, and a **mongodb://** style connection string specified using a variable named *conn_string*. Note: the database must be specified in this instance, as the Connector, still needs to create a connection to the database
+
+```
+
+from rgsync.Connectors import MongoConnector, MongoConnection
 db = 'yourmongodbname'
+connection = MongoConnection(None, None, db, conn_string='mongodb://172.17.0.1:27017,172.17.0.5:27017,172.17.0.9:27017')
+jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 ```
 
 ## Examples
