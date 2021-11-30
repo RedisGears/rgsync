@@ -21,10 +21,12 @@ Let's assume the Redis JSON data contains the following:
 
 In that case the data would be replicated to Mongo, appearing as below. Note that Mongo will add an *_id* field for its entry. The *person_id* below refers to the key used to store data in Redis. Assuming that example above was stored in Redis (i.e JSON.SET), using the key *person:1*, the following would be the output in Mongo.
 
+**NOTE**: redisgears reserves the internal key name **redisgears**, so you must ensure that your json hierarchy does not contain a root element with that name.
+
 ```
 {'_id': ObjectId('617953191b814c4c150bddd4'),
   'person_id': 1,
-  'gears': {'hello': 'world'}
+  'hello': 'world'
 ]
 
 ```
@@ -69,16 +71,13 @@ db = 'yourmongodbname'
 
 personConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-# datakey be replaced with any string, *gears* is only an example.
-dataKey = 'gears'
 
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=personConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=personConnector,
-                   name='PersonJSONWriteThrough', version='99.99.99',
-                   dataKey=dataKey)
+                   name='PersonJSONWriteThrough', version='99.99.99')
 ```
 
 ### Gears recipe writing to multiple collections
@@ -94,24 +93,20 @@ db = 'yourmongodbname'
 
 personConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-# datakey be replaced with any string, *gears* is only an example.
-dataKey = 'gears'
-
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=personConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=personConnector,
-                   name='PersonJSONWriteThrough', version='99.99.99',
-                   dataKey=dataKey)
+                   name='PersonJSONWriteThrough', version='99.99.99')
 
 thingConnector = MongoConnector(connection, db, 'things', 'thing_id')
 RGJSONWriteBehind(GB,  keysPrefix='thing',
               connector=thingConnector, name='ThingWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=thingConnector,
-                   name='ThingJSONWriteThrough', version='99.99.99', dataKey=dataKey)
+                   name='ThingJSONWriteThrough', version='99.99.99')
 ```
 
 ### Data storage examples

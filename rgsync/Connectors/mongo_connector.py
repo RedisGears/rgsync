@@ -83,8 +83,9 @@ class MongoConnector:
 
             # flatten the key, to support partial updates
             if k == dataKey:
-                update = {'{}.{}'.format(dataKey, i): val for i, val in query.pop(k).items()}
+                update = {i: val for i, val in query.pop(k).items()}
                 break
+
         query.update(update)
 
         rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
