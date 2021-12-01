@@ -1,6 +1,7 @@
 import pytest
+import string
+import random
 import json
-from collections import OrderedDict
 import time
 import tox
 from redis import Redis
@@ -44,13 +45,12 @@ db = '%s'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-dataKey = 'gears'
 RGJSONWriteBehind(GB,  keysPrefix='person',
-              connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99', dataKey=dataKey)
+              connector=jConnector, name='PersonsWriteBehind',
+              version='99.99.99')
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, 
-                   name='JSONWriteThrough', version='99.99.99', dataKey=dataKey)
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
+                   name='JSONWriteThrough', version='99.99.99')
 """ % (dbuser, dbpasswd, db, db)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
@@ -63,7 +63,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
         cls.DBNAME = db
 
     def _sampledata(self):
-        d = {'some': 'value', 
+        d = {'some': 'value',
              'and another': ['set', 'of', 'values']
         }
         return d
@@ -71,15 +71,20 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
     def _base_writebehind_validation(self):
         self.env.execute_command('json.set', 'person:1', '.', json.dumps(self._sampledata()))
         result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
         while len(result) == 0:
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed writing data to mongo"
+                break
+            count += 1
 
-        assert 'gears' in result[0].keys()
-        assert '1' == result[0]['person_id']
-        assert 'value' == result[0]['gears']['some']
-        assert ['set', 'of', 'values'] == result[0]['gears']['and another']
-       
+        assert 'gears'not in result[0].keys()
+        assert 1 == int(result[0]['person_id'])
+        assert 'value' == result[0]['some']
+        assert ['set', 'of', 'values'] == result[0]['and another']
+
     def testSimpleWriteBehind(self):
         self._base_writebehind_validation()
 
@@ -93,6 +98,51 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
                 assert False == True, "Failed deleting data from mongo"
                 break
             count += 1
+
+    def testGiantWriteBehind(self):
+        large_blob = {
+            "firstName": "Just",
+            "lastName": "Aperson",
+            "age": 24,
+            "address": {
+                "streetAddress": "123 Fake Street",
+                "city": "Springfield",
+                "state": "IL",
+                "postalCode": "123456"
+            },
+            "phoneNumbers": [
+                { "type": "home", "number": "1234567890" }
+            ],
+            "GlossTerm": "Standard Generalized Markup Language",
+            "Acronym": "SGML",
+            "Abbrev": "ISO 8879:1986",
+            "GlossDef": {
+                "para": "A meta-markup language, used to create markup languages such as DocBook.",
+                "GlossSeeAlso": ["GML", "XML"]
+            },
+            "GlossSee": "markup"
+        }
+
+        for i in range(1, 255):
+            key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=15))
+            val = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20))
+            large_blob[key] = val
+
+        self.env.execute_command('json.set', 'person:1', '.', json.dumps(large_blob))
+
+        result = list(self.dbconn[self.DBNAME]['persons'].find())
+        count = 0
+        while len(result) == 0:
+            time.sleep(0.1)
+            result = list(self.dbconn[self.DBNAME]['persons'].find())
+            if count == 10:
+                assert False == True, "Failed writing data to mongo"
+                break
+            count += 1
+
+        for key in large_blob:
+            assert key in result[0].keys()
+            assert result[0][key] == large_blob[key]
 
     def testStraightDelete(self):
         self._base_writebehind_validation()
@@ -122,7 +172,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
         while count != 10:
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
-            if result[0]['gears']['some'] == 'not a value!':
+            if result[0]['some'] == 'not a value!':
                 break
             else:
                 count += 1
@@ -146,10 +196,10 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
         while count != 10:
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
-            if 'somerandomthing' not in result[0]['gears'].keys():
+            if 'somerandomthing' not in result[0].keys():
                 count += 1
             else:
-                assert result[0]['gears']['somerandomthing'] == 'this too is random!'
+                assert result[0]['somerandomthing'] == 'this too is random!'
                 break
 
         if count == 10:
@@ -194,21 +244,20 @@ db = '%s'
 
 jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-dataKey = 'gears'
 RGJSONWriteBehind(GB,  keysPrefix='person',
-              connector=jConnector, name='PersonsWriteBehind', 
-              version='99.99.99', dataKey=dataKey)
+              connector=jConnector, name='PersonsWriteBehind',
+              version='99.99.99')
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector, 
-                   name='JSONWriteThrough', version='99.99.99', dataKey=dataKey)
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
+                   name='JSONWriteThrough', version='99.99.99')
 
 secondConnector = MongoConnector(connection, db, 'secondthings', 'thing_id')
 RGJSONWriteBehind(GB,  keysPrefix='thing',
-              connector=secondConnector, name='SecondThingWriteBehind', 
-              version='99.99.99', dataKey=dataKey)
+              connector=secondConnector, name='SecondThingWriteBehind',
+              version='99.99.99')
 
-RGJSONWriteThrough(GB, keysPrefix='__', connector=secondConnector, 
-                   name='SecondJSONWriteThrough', version='99.99.99', dataKey=dataKey)
+RGJSONWriteThrough(GB, keysPrefix='__', connector=secondConnector,
+                   name='SecondJSONWriteThrough', version='99.99.99')
 
 """ % (dbuser, dbpasswd, db, db)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
@@ -222,7 +271,7 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=secondConnector,
         cls.DBNAME = db
 
    def _sampledata(self):
-        d = {'some': 'value', 
+        d = {'some': 'value',
              'and another': ['set', 'of', 'values']
         }
         return d
@@ -235,11 +284,11 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=secondConnector,
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['persons'].find())
 
-        assert 'gears' in result[0].keys()
-        assert '1' == result[0]['person_id']
-        assert 'value' == result[0]['gears']['some']
-        assert ['set', 'of', 'values'] == result[0]['gears']['and another']
-       
+        assert 'gears' not in result[0].keys()
+        assert 1 == int(result[0]['person_id'])
+        assert 'value' == result[0]['some']
+        assert ['set', 'of', 'values'] == result[0]['and another']
+
         ddd = {"hello": "there", "myname": "is simon!", "well": ["is", "that", "fun"]}
         self.env.execute_command('json.set', 'thing:1', '.', json.dumps(ddd))
         result = list(self.dbconn[self.DBNAME]['secondthings'].find())
@@ -247,8 +296,56 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=secondConnector,
             time.sleep(0.1)
             result = list(self.dbconn[self.DBNAME]['secondthings'].find())
 
-        assert 'gears' in result[0].keys()
+        assert 'gears' not in result[0].keys()
         assert 1 == result[0]['thing_id']
-        assert 'there' == result[0]['gears']['hello']
-        assert ['is', 'that', 'fun'] == result[0]['gears']['well']
-       
+        assert 'there' == result[0]['hello']
+        assert ['is', 'that', 'fun'] == result[0]['well']
+
+
+class TestMongoWithConnectionString(TestMongoJSON):
+
+    @classmethod
+    def setup_class(cls):
+        cls.env = Redis(decode_responses=True)
+
+        pkg = find_package()
+
+        # connection info
+        r = tox.config.parseconfig(open("tox.ini").read())
+        docker = r._docker_container_configs["mongo"]["environment"]
+        dbuser = docker["MONGO_INITDB_ROOT_USERNAME"]
+        dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
+        db = docker["MONGO_DB"]
+
+        con = "mongodb://{user}:{password}@172.17.0.1:27017/".format(
+            user=dbuser,
+            password=dbpasswd,
+        )
+        print(con)
+        script = """
+from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
+from rgsync.Connectors import MongoConnector, MongoConnection
+
+db = '%s'
+con = "%s"
+
+connection = MongoConnection(None, None, db, conn_string=con)
+
+jConnector = MongoConnector(connection, db, 'persons', 'person_id')
+
+RGJSONWriteBehind(GB,  keysPrefix='person',
+              connector=jConnector, name='PersonsWriteBehind',
+              version='99.99.99')
+
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
+                   name='JSONWriteThrough', version='99.99.99')
+""" % (db, con)
+        cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
+
+        e = MongoClient(con)
+
+        # # tables are only created upon data use - so this is our equivalent
+        # # for mongo
+        assert 'version' in e.server_info().keys()
+        cls.dbconn = e
+        cls.DBNAME = db

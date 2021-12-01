@@ -4,13 +4,14 @@ from pymongo import UpdateOne, ReplaceOne, DeleteOne
 
 class MongoConnection(object):
 
-    def __init__(self, user, password, db, authSource="admin"):
+    def __init__(self, user, password, db, authSource="admin", conn_string=None):
         self._user = user
         self._passwd = password
         self._db = db
 
         # mongo allows one to authenticate against different databases
         self._authSource = authSource
+        self._conn_string = conn_string
 
     @property
     def user(self):
@@ -23,9 +24,12 @@ class MongoConnection(object):
     @property
     def db(self):
         return self._db() if callable(self._db) else self._db
-
+    
     @property
     def _getConnectionStr(self):
+        if self._conn_string is not None:
+            return self._conn_string
+        
         con = "mongodb://{}:{}@{}?authSource={}".format(
             self.user,
             self.passwd,
@@ -83,8 +87,9 @@ class MongoConnector:
 
             # flatten the key, to support partial updates
             if k == dataKey:
-                update = {'{}.{}'.format(dataKey, i): val for i, val in query.pop(k).items()}
+                update = {i: val for i, val in query.pop(k).items()}
                 break
+
         query.update(update)
 
         rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 

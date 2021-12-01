@@ -21,15 +21,19 @@ Let's assume the Redis JSON data contains the following:
 
 In that case the data would be replicated to Mongo, appearing as below. Note that Mongo will add an *_id* field for its entry. The *person_id* below refers to the key used to store data in Redis. Assuming that example above was stored in Redis (i.e JSON.SET), using the key *person:1*, the following would be the output in Mongo.
 
+**NOTE**: redisgears reserves the internal key name **redisgears**, so you must ensure that your json hierarchy does not contain a root element with that name.
+
 ```
 {'_id': ObjectId('617953191b814c4c150bddd4'),
   'person_id': 1,
-  'gears': {'hello': 'world'}
+  'hello': 'world'
 ]
 
 ```
 
 ### Connecting to Mongo
+
+#### Standalong Mongo instance
 
 The example below illustrates how one can build a connection to Mongo. First, we build a MongoConnection, and the following are the inputs:
 
@@ -51,7 +55,19 @@ The example below illustrates how one can build a connection to Mongo. First, we
 ```
 from rgsync.Connectors import MongoConnector, MongoConnection
 connection = MongoConnection('admin', 'adminpassword', '172.17.0.1:27017/admin')
+jConnector = MongoConnector(connection, 'yourmongodbname', 'persons', 'person_id')
+```
+
+#### Connecting to a cluster
+
+The cluster connection is similar to standalone, except that the MongoConnection object must be initialized differently. *None*s must be passed in for both the username and password, and a **mongodb://** style connection string specified using a variable named *conn_string*. Note: the database must be specified in this instance, as the Connector, still needs to create a connection to the database
+
+```
+
+from rgsync.Connectors import MongoConnector, MongoConnection
 db = 'yourmongodbname'
+connection = MongoConnection(None, None, db, conn_string='mongodb://172.17.0.1:27017,172.17.0.5:27017,172.17.0.9:27017')
+jConnector = MongoConnector(connection, db, 'persons', 'person_id')
 ```
 
 ## Examples
@@ -69,16 +85,13 @@ db = 'yourmongodbname'
 
 personConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-# datakey be replaced with any string, *gears* is only an example.
-dataKey = 'gears'
 
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=personConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=personConnector,
-                   name='PersonJSONWriteThrough', version='99.99.99',
-                   dataKey=dataKey)
+                   name='PersonJSONWriteThrough', version='99.99.99')
 ```
 
 ### Gears recipe writing to multiple collections
@@ -94,24 +107,20 @@ db = 'yourmongodbname'
 
 personConnector = MongoConnector(connection, db, 'persons', 'person_id')
 
-# datakey be replaced with any string, *gears* is only an example.
-dataKey = 'gears'
-
 RGJSONWriteBehind(GB,  keysPrefix='person',
               connector=personConnector, name='PersonsWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=personConnector,
-                   name='PersonJSONWriteThrough', version='99.99.99',
-                   dataKey=dataKey)
+                   name='PersonJSONWriteThrough', version='99.99.99')
 
 thingConnector = MongoConnector(connection, db, 'things', 'thing_id')
 RGJSONWriteBehind(GB,  keysPrefix='thing',
               connector=thingConnector, name='ThingWriteBehind',
-              version='99.99.99', dataKey=dataKey)
+              version='99.99.99')
 
 RGJSONWriteThrough(GB, keysPrefix='__', connector=thingConnector,
-                   name='ThingJSONWriteThrough', version='99.99.99', dataKey=dataKey)
+                   name='ThingJSONWriteThrough', version='99.99.99')
 ```
 
 ### Data storage examples
