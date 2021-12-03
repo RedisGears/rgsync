@@ -239,6 +239,9 @@ class RGWriteBase():
         try:
             self.connector.PrepereQueries(self.mappings)
         except Exception as e:
+            # cases like mongo, that don't implement this, silence the warning
+            if "object has no attribute 'PrepereQueries'" in str(e):
+                return
             WriteBehindLog('Skip calling PrepereQueries of connector, err="%s"' % str(e))
 
 def DeleteKeyIfNeeded(r):
@@ -460,6 +463,7 @@ class RGWriteThrough(RGWriteBase):
         register(mode='sync', prefix='%s*' % keysPrefix, eventTypes=['hset', 'hmset'], convertToStr=False)
 
 
+GEARSDATAKEY = "redisgears"
 class RGJSONWriteBehind(RGWriteBase):
     # JSONWrite Behind
     # The big deal is that:
@@ -471,7 +475,7 @@ class RGJSONWriteBehind(RGWriteBase):
                  eventTypes=['json.set', 'json.del',
                              'json.strappend', 'json.arrinsert', 'json.arrappend',
                              'json.arrtrim', 'json.arrpop', 'change', 'del'],
-                 dataKey="gears"):
+                 dataKey=GEARSDATAKEY):
 
         mappings = {'sync_data': dataKey}
         UUID = str(uuid.uuid4())
@@ -512,7 +516,7 @@ class RGJSONWriteBehind(RGWriteBase):
                  onFailedRetryInterval=onFailedRetryInterval)
 
 class RGJSONWriteThrough(RGWriteBase):
-    def __init__(self, GB, keysPrefix, connector, name, version=None, dataKey="gears"):
+    def __init__(self, GB, keysPrefix, connector, name, version=None, dataKey=GEARSDATAKEY):
         mappings = {'sync_data': dataKey}
         RGWriteBase.__init__(self, mappings, connector, name, version)
 
