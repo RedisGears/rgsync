@@ -20,6 +20,9 @@ __all__ = [
     'SnowflakeSqlConnection',
     'SnowflakeSqlConnector',
 
+    'SQLiteConnection',
+    'SQLiteConnector',
+
     'CqlConnector',
     'CqlConnection',
 

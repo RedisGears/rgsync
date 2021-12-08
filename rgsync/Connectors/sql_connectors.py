@@ -219,7 +219,7 @@ class MySqlConnector(BaseSqlConnector):
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
 
-class PostgresConnector(MySqlConnector):
+class PostgresConnector(BaseSqlConnector):
 
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
@@ -251,7 +251,7 @@ class PostgresConnector(MySqlConnector):
             self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
 
 
-class SQLiteConnector(MySqlConnector):
+class SQLiteConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
 
