@@ -119,7 +119,7 @@ workflows:
       - platform-build:
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7, centos8]
+              platform: [buster, bionic, xenial, centos7, centos8]
           context: common
           <<: *on-any-branch
       - deploy-artifacts:
