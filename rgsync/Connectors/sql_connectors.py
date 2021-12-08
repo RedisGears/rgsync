@@ -253,7 +253,22 @@ class PostgresConnector(MySqlConnector):
 
 class SQLiteConnector(MySqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
-        MySqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+        BaseSqlConnector.__init__(self, connection, tableName, pk, exactlyOnceTableName)
+
+    def PrepereQueries(self, mappings):
+        def GetUpdateQuery(tableName, mappings, pk):
+            query = 'INSERT INTO %s' % tableName
+            values = [val for kk, val in mappings.items() if not kk.startswith('_')]
+            values = [pk] + values
+            values.sort()
+            query = '%s (%s) VALUES (%s) ON CONFLICT(%s) DO UPDATE SET %s' % (query, ','.join(values), ','.join([':%s' % a for a in values]), pk, ','.join(['%s=values(%s)' % (a,a) for a in values]))
+
+            return query
+        self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
+        self.delQuery = 'delete from %s where %s=:%s' % (self.tableName, self.pk, self.pk)
+        if self.exactlyOnceTableName is not None:
+            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+
 
 class OracleSqlConnector(BaseSqlConnector):
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
