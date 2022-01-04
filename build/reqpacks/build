@@ -27,7 +27,7 @@ if [[ -z $GEARS_VERSION ]]; then
 	if [[ $RGSYNC_VERSION == 99.99.99 ]]; then
 		GEARS_VERSION=master
 	else
-		GEARS_VERSION=1.0.7
+		GEARS_VERSION=1.0.9
 	fi
 fi
 
