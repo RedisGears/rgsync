@@ -209,6 +209,57 @@ RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
 
 
 @pytest.mark.mongo
+class TestMongoConnString(TestMongoJSON):
+    """Mongo tests, using a connection string for the database side."""
+
+    @classmethod
+    def setup_class(cls):
+        cls.env = Redis(decode_responses=True)
+
+        pkg = find_package()
+
+        # connection info
+        r = tox.config.parseconfig(open("tox.ini").read())
+        docker = r._docker_container_configs["mongo"]["environment"]
+        dbuser = docker["MONGO_INITDB_ROOT_USERNAME"]
+        dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
+        db = docker["MONGO_DB"]
+
+        con = "mongodb://{user}:{password}@172.17.0.1:27017/{db}?authSource=admin".format(
+            user=dbuser,
+            password=dbpasswd,
+            db=db,
+        )
+
+        script = """
+from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
+from rgsync.Connectors import MongoConnector, MongoConnection
+
+db = '%s'
+conn_string = '%s'
+connection = MongoConnection(None, None, db, None, conn_string)
+
+jConnector = MongoConnector(connection, db, 'persons', 'person_id')
+
+RGJSONWriteBehind(GB,  keysPrefix='person',
+              connector=jConnector, name='PersonsWriteBehind',
+              version='99.99.99')
+
+RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
+                   name='JSONWriteThrough', version='99.99.99')
+""" % (db, con)
+        cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
+
+        e = MongoClient(con)
+
+        # # tables are only created upon data use - so this is our equivalent
+        # # for mongo
+        assert 'version' in e.server_info().keys()
+        cls.dbconn = e
+        cls.DBNAME = db
+
+
+@pytest.mark.mongo
 class TestMongoJSONDualKeys:
 
    def teardown_method(self):
@@ -321,7 +372,6 @@ class TestMongoWithConnectionString(TestMongoJSON):
             user=dbuser,
             password=dbpasswd,
         )
-        print(con)
         script = """
 from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
 from rgsync.Connectors import MongoConnector, MongoConnection
@@ -340,6 +390,7 @@ RGJSONWriteBehind(GB,  keysPrefix='person',
 RGJSONWriteThrough(GB, keysPrefix='__', connector=jConnector,
                    name='JSONWriteThrough', version='99.99.99')
 """ % (db, con)
+        print(script)
         cls.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymongo')
 
         e = MongoClient(con)
