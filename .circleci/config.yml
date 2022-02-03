@@ -33,7 +33,11 @@ commands:
           name: Build for platform
           shell: /bin/bash
           command: |
-            OSNICK=<<parameters.platform>> ./build/reqpacks/build
+            if [[ "<<parameters.platform>>" == "ol8" ]]; then
+            OSNICK=centos8 ./build/reqpacks/build
+            else
+                OSNICK=<<parameters.platform>> ./build/reqpacks/build
+            fi
       - persist_to_workspace:
           root: bin/artifacts
           paths:
