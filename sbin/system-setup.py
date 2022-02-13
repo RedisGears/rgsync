@@ -40,8 +40,7 @@ class RGSyncSetup(paella.Setup):
         self.install_gnu_utils()
 
     def common_last(self):
-        self.pip_install("--no-cache-dir git+https://github.com/Grokzen/redis-py-cluster.git@master")
-        self.pip_install("--no-cache-dir git+https://github.com/RedisLabsModules/RLTest.git@master")
+        self.pip_install("rltest==0.4.2")
         self.pip_install("git+https://github.com/RedisGears/gears-cli.git")
 
 #----------------------------------------------------------------------------------------------
