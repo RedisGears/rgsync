@@ -18,7 +18,6 @@ class RGSyncSetup(paella.Setup):
 
     def common_first(self):
         self.install_downloaders()
-        self.setup_pip()
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
