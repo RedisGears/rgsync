@@ -32,7 +32,7 @@ class ReqPacksSetup(paella.Setup):
     def redhat_compat(self):
         self.run("%s/bin/getgcc" % READIES)
         self.install("redhat-lsb-core")
-        if self.os_version[0] >= 8 and self.dist in ['centos', 'ol']:
+        if self.os_version[0] >= 8 and self.dist in ['centos', 'rocky']:
             self.install("sqlite-devel")
         else:
             self.install("libsqlite3x-devel")
