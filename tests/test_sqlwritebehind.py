@@ -48,7 +48,7 @@ CREATE TABLE persons (
             if count == 10:
                 self.env.assertTrue(False, message='That failed')
                 break
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 22)
 
         self.env.execute_command('del', 'person:1')
@@ -76,7 +76,7 @@ CREATE TABLE persons (
         assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 22)
 
 
@@ -123,7 +123,7 @@ CREATE TABLE persons (
         assert res[0][1][0][1] == to_utf(['status', 'done'])
 
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 22)
 
         # delete data without replicate
@@ -136,7 +136,7 @@ CREATE TABLE persons (
 
         # make sure data is still in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 22)
 
         # rewrite a hash and not replicate
@@ -163,7 +163,7 @@ CREATE TABLE persons (
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 20)
 
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
@@ -183,7 +183,7 @@ CREATE TABLE persons (
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 20)
 
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
@@ -192,7 +192,7 @@ CREATE TABLE persons (
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo1', 'bar', 20)
 
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo1', 'last_name': 'bar', 'age': '20'})
@@ -223,7 +223,7 @@ CREATE TABLE persons (
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 20)
 
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
@@ -233,7 +233,7 @@ CREATE TABLE persons (
         # make sure data was deleted from redis but not from the target
         assert self.env.execute_command('hgetall', 'person:1') == {}
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 20)
 
 
@@ -253,7 +253,7 @@ CREATE TABLE persons (
 
         # make sure data is in the dabase
         result = self.dbconn.execute(text('select * from persons'))
-        res = result.next()
+        res = result.fetchone()
         assert res == ('1', 'foo', 'bar', 20)
 
         # make sure data is in redis
