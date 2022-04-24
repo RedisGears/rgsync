@@ -35,7 +35,7 @@ CREATE TABLE persons (
     def teardown_class(cls):
         cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
         cls.env.flushall()
-
+        
     def testSimpleWriteBehind(self):
         self.env.execute_command('flushall')
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
@@ -295,7 +295,7 @@ CREATE TABLE persons (
 
 @pytest.mark.postgres
 class TestPostgresql(BaseSQLTest):
-
+    
     def credentials(self):
         r = tox.config.parseconfig(open("tox.ini").read())
         docker = r._docker_container_configs["postgres"]["environment"]
@@ -337,7 +337,7 @@ RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=pers
 
 @pytest.mark.mysql
 class TestMysql(BaseSQLTest):
-
+    
     def credentials(self):
         r = tox.config.parseconfig(open("tox.ini").read())
         docker = r._docker_container_configs["mysql"]["environment"]
@@ -383,3 +383,41 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
         self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymysql[rsa]')
+
+@pytest.mark.db2
+class TestDB2(BaseSQLTest):
+    
+    def credentials(self):
+        r = tox.config.parseconfig(open("tox.ini").read())
+        docker = r._docker_container_configs["db2"]["environment"]
+        dbuser = docker["DB2INSTANCE"]
+        dbpasswd = docker["DB2INST1_PASSWORD"]
+        db = docker["DBNAME"]
+        
+        return {"dbuser": dbuser,
+                "dbpasswd": dbpasswd,
+                "db": db}
+        
+    def connection(self, **kwargs):
+        
+        con = f"db2://{kwargs['user']}:{kwargs['password']}@172.17.0.1:50000/{kwargs['db']}"
+        return con
+    
+    def run_install_script(self, pkg, **kwargs):
+        script = """
+from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync.Connectors import DB2Connector, DB2Connection
+
+connection = DB2Connection('%s', '%s', '172.17.0.1:50000/%s')
+personsConnector = DB2Connector(connection, 'persons', 'person_id')
+
+personsMappings = {
+    'first_name':'first',
+    'last_name':'last',
+    'age':'age'
+}
+
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+""" % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
+        self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'ibm-db-sa')
