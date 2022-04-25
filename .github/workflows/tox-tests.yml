@@ -7,7 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 15
-      timeout-minutes: 15
       matrix:
         toxenv: [ mongo, mysql, postgres, db2]
         python-versions: ['3.6', '3.7', '3.8', '3.9', '3.10']
