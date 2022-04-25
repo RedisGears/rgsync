@@ -51,6 +51,7 @@ markers = [
     "postgres: postgres backend tests",
     "sqlite: sqlite backend tests",
     "mongo: mongo backend tests",
+    "db2: db2 backend tests",
 ]
 
 [build-system]
