@@ -5,6 +5,7 @@ for i in `seq 1 10`; do
     if [ $? -eq 0 ]; then
         exit 0
     fi
-    sleep 30
+    sleep 60
 done
+docker logs db2
 exit 1
