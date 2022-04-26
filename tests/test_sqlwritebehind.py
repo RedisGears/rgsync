@@ -28,27 +28,26 @@ CREATE TABLE persons (
 
         e = create_engine(cls.connection(cls, **creds)).execution_options(autocommit=True)
         cls.dbconn = e.connect()
-        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons"))
         cls.dbconn.execute(text(table_create))
 
     @classmethod
     def teardown_class(cls):
-        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons;"))
+        cls.dbconn.execute(text("DROP TABLE IF EXISTS persons"))
         cls.env.flushall()
-
+        
     def testSimpleWriteBehind(self):
         self.env.execute_command('flushall')
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22')
         result = self.dbconn.execute(text('select * from persons'))
         count = 0
-        while result.rowcount == 0:
-            time.sleep(0.1)
+        while result.rowcount in [0, -1]:
+            time.sleep(0.3)
             result = self.dbconn.execute(text('select * from persons'))
             count += 1
             if count == 10:
-                self.env.assertTrue(False, message='That failed')
                 break
-        res = result.next()
+        res = result.first()
         assert res == ('1', 'foo', 'bar', 22)
 
         self.env.execute_command('del', 'person:1')
@@ -93,7 +92,7 @@ CREATE TABLE persons (
         assert res[0][1][0][1] == to_utf(['status', 'done'])
         assert self.env.execute_command('hgetall', 'person:1') == {}
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
     def testWriteBehindOperations(self):
         self.env.execute_command('flushall')
@@ -108,7 +107,7 @@ CREATE TABLE persons (
 
         # make sure data is not in the database
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         # rewrite data with replicate
         self.env.execute_command('hset', 'person:1', 'first_name', 'foo', 'last_name', 'bar', 'age', '22', '#', '=2')
@@ -172,7 +171,7 @@ CREATE TABLE persons (
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         assert self.env.execute_command('hgetall', 'person:1') == {}
 
@@ -201,7 +200,7 @@ CREATE TABLE persons (
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         assert self.env.execute_command('hgetall', 'person:1') == {}
 
@@ -212,7 +211,7 @@ CREATE TABLE persons (
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
 
@@ -241,7 +240,7 @@ CREATE TABLE persons (
 
         # make sure data was deleted from target as well
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
     def testWriteTroughAckStream(self):
         self.env.execute_command('flushall')
@@ -266,7 +265,7 @@ CREATE TABLE persons (
 
         # make sure data is deleted from the database
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         assert self.env.execute_command('hgetall', 'person:1') == {}
 
@@ -280,7 +279,7 @@ CREATE TABLE persons (
 
         # make sure data is not in the target
         result = self.dbconn.execute(text('select * from persons'))
-        assert result.rowcount == 0
+        assert result.rowcount in [0, -1]
 
         # make sure data is in redis
         assert self.env.execute_command('hgetall', 'person:1') == to_utf({'first_name':'foo', 'last_name': 'bar', 'age': '20'})
@@ -295,7 +294,7 @@ CREATE TABLE persons (
 
 @pytest.mark.postgres
 class TestPostgresql(BaseSQLTest):
-
+    
     def credentials(self):
         r = tox.config.parseconfig(open("tox.ini").read())
         docker = r._docker_container_configs["postgres"]["environment"]
@@ -337,7 +336,7 @@ RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=pers
 
 @pytest.mark.mysql
 class TestMysql(BaseSQLTest):
-
+    
     def credentials(self):
         r = tox.config.parseconfig(open("tox.ini").read())
         docker = r._docker_container_configs["mysql"]["environment"]
@@ -383,3 +382,41 @@ RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=pers
 RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
 """ % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
         self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'pymysql[rsa]')
+
+@pytest.mark.db2
+class TestDB2(BaseSQLTest):
+    
+    def credentials(self):
+        r = tox.config.parseconfig(open("tox.ini").read())
+        docker = r._docker_container_configs["db2"]["environment"]
+        dbuser = docker["DB2INSTANCE"]
+        dbpasswd = docker["DB2INST1_PASSWORD"]
+        db = docker["DBNAME"]
+        
+        return {"dbuser": dbuser,
+                "dbpasswd": dbpasswd,
+                "db": db}
+        
+    def connection(self, **kwargs):
+        
+        con = f"db2://{kwargs['dbuser']}:{kwargs['dbpasswd']}@172.17.0.1:50000/{kwargs['db']}"
+        return con
+    
+    def run_install_script(self, pkg, **kwargs):
+        script = """
+from rgsync import RGWriteBehind, RGWriteThrough
+from rgsync.Connectors import DB2Connector, DB2Connection
+
+connection = DB2Connection('%s', '%s', '172.17.0.1:50000/%s')
+personsConnector = DB2Connector(connection, 'persons', 'person_id')
+
+personsMappings = {
+    'first_name':'first',
+    'last_name':'last',
+    'age':'age'
+}
+
+RGWriteBehind(GB,  keysPrefix='person', mappings=personsMappings, connector=personsConnector, name='PersonsWriteBehind',  version='99.99.99')
+RGWriteThrough(GB, keysPrefix='__',     mappings=personsMappings, connector=personsConnector, name='PersonsWriteThrough', version='99.99.99')
+""" % (kwargs['dbuser'], kwargs['dbpasswd'], kwargs['db'])
+        self.env.execute_command('RG.PYEXECUTE', script, 'REQUIREMENTS', pkg, 'ibm-db-sa')
