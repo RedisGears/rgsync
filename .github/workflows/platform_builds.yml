@@ -1,0 +1,28 @@
+name: Reqpack builds
+on: 
+  push:
+    # branches:
+    #   - master
+    #   - '[0-9].[0-9]'
+
+jobs:
+
+  platform-build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 10
+      matrix:
+        osnick: [bionic, xenial, centos7, rocky8]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: redislabsmodules/readies
+          path: deps/readies
+      - name: dependencies
+        run: |
+          ./deps/readies/bin/getpy2
+          ./sbin/system-setup.py
+      - name: Platform build ${{matrix.osnick}}
+        run: |
+          OSNICK=${{matrix.osnick}} ./build/reqpacks/build
