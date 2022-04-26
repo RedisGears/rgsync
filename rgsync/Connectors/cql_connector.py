@@ -1,8 +1,11 @@
-from rgsync.common import *
-from redisgears import getMyHashTag as hashtag
 import json
 
-class CqlConnection():
+from redisgears import getMyHashTag as hashtag
+
+from rgsync.common import *
+
+
+class CqlConnection:
     def __init__(self, user, password, db, keyspace):
         self._user = user
         self._password = password
@@ -26,22 +29,33 @@ class CqlConnection():
         return self._keyspace() if callable(self._keyspace) else self._keyspace
 
     def _getConnectionStr(self):
-        return json.dumps({'user': self.user, 'password': self.password, 'db': self.db, 'keyspace': self.keyspace})
+        return json.dumps(
+            {
+                "user": self.user,
+                "password": self.password,
+                "db": self.db,
+                "keyspace": self.keyspace,
+            }
+        )
 
     def Connect(self):
-        from cassandra.cluster import Cluster
         from cassandra.auth import PlainTextAuthProvider
+        from cassandra.cluster import Cluster
 
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog('Connect: connecting db=%s keyspace=%s' % (self.db, self.keyspace))
-        auth_provider = PlainTextAuthProvider(username=self.user, password=self.password)
+        WriteBehindLog(
+            f"Connect: connecting db={self.db} keyspace={self.keyspace}"
+        )
+        auth_provider = PlainTextAuthProvider(
+            username=self.user, password=self.password
+        )
         cluster = Cluster(self.db.split(), auth_provider=auth_provider)
-        if self.keyspace != '':
+        if self.keyspace != "":
             session = cluster.connect(self.keyspace)
         else:
             session = cluster.connect()
-        WriteBehindLog('Connect: Connected')
+        WriteBehindLog("Connect: Connected")
         return session
 
 
@@ -58,15 +72,20 @@ class CqlConnector:
 
     def PrepereQueries(self, mappings):
         def GetUpdateQuery(tableName, mappings, pk):
-            query = 'update %s set ' % tableName
-            fields = ['%s=?' % (val) for kk, val in mappings.items() if not kk.startswith('_')]
-            query += ','.join(fields)
-            query += ' where %s=?' % (self.pk)
+            query = f"update {tableName} set "
+            fields = [
+                f"{val}=?" for kk, val in mappings.items() if not kk.startswith("_")
+            ]
+            query += ",".join(fields)
+            query += f" where {self.pk}=?"
             return query
+
         self.addQuery = GetUpdateQuery(self.tableName, mappings, self.pk)
-        self.delQuery = 'delete from %s where %s=?' % (self.tableName, self.pk)
+        self.delQuery = f"delete from {self.tableName} where {self.pk}=?"
         if self.exactlyOnceTableName is not None:
-            self.exactlyOnceQuery = GetUpdateQuery(self.exactlyOnceTableName, {'val', 'val'}, 'id')
+            self.exactlyOnceQuery = GetUpdateQuery(
+                self.exactlyOnceTableName, {"val", "val"}, "id"
+            )
 
     def TableName(self):
         return self.tableName
@@ -76,7 +95,7 @@ class CqlConnector:
 
     def WriteData(self, data):
         if len(data) == 0:
-            WriteBehindLog('Warning, got an empty batch')
+            WriteBehindLog("Warning, got an empty batch")
             return
         query = None
 
@@ -84,18 +103,23 @@ class CqlConnector:
             if not self.session:
                 self.session = self.connection.Connect()
                 if self.exactlyOnceTableName is not None:
-                    shardId = 'shard-%s' % hashtag()
-                    result = self.session.execute('select val from %s where id=?' % self.exactlyOnceTableName, shardId)
+                    shardId = f"shard-{hashtag()}"
+                    result = self.session.execute(
+                        f"select val from {self.exactlyOnceTableName} where id=?",
+                        shardId,
+                    )
                     res = result.first()
                     if res is not None:
-                        self.exactlyOnceLastId = str(res['val'])
+                        self.exactlyOnceLastId = str(res["val"])
                     else:
                         self.shouldCompareId = False
         except Exception as e:
-            self.session = None # next time we will reconnect to the database
+            self.session = None  # next time we will reconnect to the database
             self.exactlyOnceLastId = None
-            self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
-            msg = 'Failed connecting to Cassandra database, error="%s"' % str(e)
+            self.shouldCompareId = (
+                True if self.exactlyOnceTableName is not None else False
+            )
+            msg = f'Failed connecting to Cassandra database, error="{str(e)}"'
             WriteBehindLog(msg)
             raise Exception(msg) from None
 
@@ -103,21 +127,33 @@ class CqlConnector:
 
         try:
             from cassandra.cluster import BatchStatement
+
             batch = BatchStatement()
-            isAddBatch = True if data[0]['value'][OP_KEY] == OPERATION_UPDATE_REPLICATE else False
+            isAddBatch = (
+                True
+                if data[0]["value"][OP_KEY] == OPERATION_UPDATE_REPLICATE
+                else False
+            )
             query = self.addQuery if isAddBatch else self.delQuery
             stmt = self.session.prepare(query)
             lastStreamId = None
             for d in data:
-                x = d['value']
-                lastStreamId = d.pop('id', None) # pop the stream id out of the record, we do not need it
-                if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
-                    WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
+                x = d["value"]
+                lastStreamId = d.pop(
+                    "id", None
+                )  # pop the stream id out of the record, we do not need it
+                if (
+                    self.shouldCompareId
+                    and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0
+                ):
+                    WriteBehindLog(
+                        f"Skip {lastStreamId} as it was already writen to the backend"
+                    )
                     continue
 
                 op = x.pop(OP_KEY, None)
                 if op not in self.supportedOperations:
-                    msg = 'Got unknown operation'
+                    msg = "Got unknown operation"
                     WriteBehindLog(msg)
                     raise Exception(msg) from None
 
@@ -140,11 +176,16 @@ class CqlConnector:
                 self.session.execute(batch)
                 if self.exactlyOnceTableName is not None:
                     stmt = self.session.prepare(self.exactlyOnceQuery)
-                    self.session.execute(stmt, {'id':shardId, 'val':lastStreamId})
+                    self.session.execute(stmt, {"id": shardId, "val": lastStreamId})
         except Exception as e:
-            self.session = None # next time we will reconnect to the database
+            self.session = None  # next time we will reconnect to the database
             self.exactlyOnceLastId = None
-            self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
-            msg = 'Got exception when writing to DB, query="%s", error="%s".' % ((query if query else 'None'), str(e))
+            self.shouldCompareId = (
+                True if self.exactlyOnceTableName is not None else False
+            )
+            msg = 'Got exception when writing to DB, query="%s", error="%s".' % (
+                (query if query else "None"),
+                str(e),
+            )
             WriteBehindLog(msg)
             raise Exception(msg) from None

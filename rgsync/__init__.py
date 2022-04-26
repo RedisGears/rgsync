@@ -1,13 +1,13 @@
 from .redis_gears_write_behind import (
+    RGJSONWriteBehind,
+    RGJSONWriteThrough,
     RGWriteBehind,
     RGWriteThrough,
-    RGJSONWriteBehind,
-    RGJSONWriteThrough
 )
 
 __all__ = [
-    'RGWriteBehind',
-    'RGWriteThrough',
-    'RGJSONWriteBehind',
-    'RGJSONWriteThrough',
+    "RGWriteBehind",
+    "RGWriteThrough",
+    "RGJSONWriteBehind",
+    "RGJSONWriteThrough",
 ]

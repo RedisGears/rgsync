@@ -1,9 +1,11 @@
-from rgsync.common import *
 import json
-from pymongo import UpdateOne, ReplaceOne, DeleteOne
+
+from pymongo import DeleteOne, UpdateOne
+
+from rgsync.common import *
+
 
 class MongoConnection(object):
-
     def __init__(self, user, password, db, authSource="admin", conn_string=None):
         self._user = user
         self._passwd = password
@@ -24,31 +26,28 @@ class MongoConnection(object):
     @property
     def db(self):
         return self._db() if callable(self._db) else self._db
-    
+
     @property
     def _getConnectionStr(self):
         if self._conn_string is not None:
             return self._conn_string
-        
+
         con = "mongodb://{}:{}@{}?authSource={}".format(
-            self.user,
-            self.passwd,
-            self.db,
-            self._authSource
+            self.user, self.passwd, self.db, self._authSource
         )
         return con
 
     def Connect(self):
         from pymongo import MongoClient
-        WriteBehindLog('Connect: connecting')
+
+        WriteBehindLog("Connect: connecting")
         client = MongoClient(self._getConnectionStr)
         client.server_info()  # light connection test
-        WriteBehindLog('Connect: Connected')
+        WriteBehindLog("Connect: Connected")
         return client
 
+
 class MongoConnector:
-
-
     def __init__(self, connection, db, tableName, pk, exactlyOnceTableName=None):
         self.connection = connection
         self.tableName = tableName
@@ -59,7 +58,7 @@ class MongoConnector:
         self.shouldCompareId = True if self.exactlyOnceTableName is not None else False
         self.supportedOperations = [OPERATION_DEL_REPLICATE, OPERATION_UPDATE_REPLICATE]
 
-    @property    
+    @property
     def collection(self):
         return self.connection.Connect()[self.db][self.tableName]
 
@@ -75,7 +74,8 @@ class MongoConnector:
 
     def AddOrUpdateQuery(self, mappings, dataKey):
         import json
-        query = {k: v for k,v in mappings.items() if not k.find('_') == 0}
+
+        query = {k: v for k, v in mappings.items() if not k.find("_") == 0}
         # try to decode the nest - only one level deep given the mappings
 
         update = {}
@@ -92,13 +92,16 @@ class MongoConnector:
 
         query.update(update)
 
-        rr = UpdateOne(filter={self.PrimaryKey(): mappings[self.PrimaryKey()]}, 
-                       update={"$set": query}, upsert=True)
+        rr = UpdateOne(
+            filter={self.PrimaryKey(): mappings[self.PrimaryKey()]},
+            update={"$set": query},
+            upsert=True,
+        )
         return rr
 
     def WriteData(self, data, dataKey):
         if len(data) == 0:
-            WriteBehindLog('Warning, got an empty batch')
+            WriteBehindLog("Warning, got an empty batch")
             return
 
         query = None
@@ -106,32 +109,39 @@ class MongoConnector:
 
         try:
             if self.exactlyOnceTableName is not None:
-                shardId = 'shard-%s' % hashtag()
+                shardId = f"shard-{hashtag()}"
                 result = self.collection().find_one({"_id", shardId})
                 if result is not None:
-                    self.exactlyOnceLastId = result['_id']
+                    self.exactlyOnceLastId = result["_id"]
                 else:
                     self.shouldCompareId = False
 
         except Exception as e:
             self.exactlyOnceLastId = None
             self.shouldCompareId = False
-            msg = 'Failed connecting to database, error="%s"' % str(e)
+            msg = f'Failed connecting to database, error="{str(e)}"'
             WriteBehindLog(msg)
             raise Exception(msg) from None
 
         batch = []
 
         for d in data:
-            x = d['value']
+            x = d["value"]
 
-            lastStreamId = d.pop('id', None)## pop the stream id out of the record, we do not need it.
-            if self.shouldCompareId and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0:
-                WriteBehindLog('Skip %s as it was already writen to the backend' % lastStreamId)
+            lastStreamId = d.pop(
+                "id", None
+            )  ## pop the stream id out of the record, we do not need it.
+            if (
+                self.shouldCompareId
+                and CompareIds(self.exactlyOnceLastId, lastStreamId) >= 0
+            ):
+                WriteBehindLog(
+                    f"Skip {lastStreamId} as it was already writen to the backend"
+                )
 
             op = x.pop(OP_KEY, None)
             if op not in self.supportedOperations:
-                msg = 'Got unknown operation'
+                msg = "Got unknown operation"
                 WriteBehindLog(msg)
                 raise Exception(msg) from None
 
@@ -148,6 +158,9 @@ class MongoConnector:
         except Exception as e:
             self.exactlyOnceLastId = None
             self.shouldCompareId = False
-            msg = 'Got exception when writing to DB, query="%s", error="%s".' % ((query if query else 'None'), str(e))
+            msg = 'Got exception when writing to DB, query="%s", error="%s".' % (
+                (query if query else "None"),
+                str(e),
+            )
             WriteBehindLog(msg)
             raise Exception(msg) from None
