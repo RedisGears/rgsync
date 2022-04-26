@@ -1,5 +1,4 @@
 [![license](https://img.shields.io/github/license/RedisGears/rgsync.svg)](https://github.com/RedisGears/rgsync)
-[![CircleCI](https://circleci.com/gh/RedisGears/rgsync/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGears/rgsync/tree/master)
 ![GitHub Actions](https://github.com/redisgears/rgsync/actions/workflows/tox-tests.yml/badge.svg)
 [![PyPI version](https://badge.fury.io/py/rgsync.svg)](https://badge.fury.io/py/rgsync)
 [![Known Vulnerabilities](https://snyk.io/test/github/RedisGears/rgsync/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/RedisGears/rgsync?targetFile=requirements.txt)

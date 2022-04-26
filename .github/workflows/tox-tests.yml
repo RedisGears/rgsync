@@ -2,6 +2,7 @@ name: WriteBehind Tests
 on: push
 
 jobs:
+
   lint:
     name: lint
     runs-on: ubuntu-latest
@@ -26,7 +27,7 @@ jobs:
       - name: Install Dependencies
         run: |
           poetry install
-          pip install --user -r .circleci/circle_requirements.txt
+          pip install --user -r .github/requirements.txt
 
       - name: Run the linter
         run: tox -e linters
@@ -42,12 +43,12 @@ jobs:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - uses: actions/checkout@v2
- 
+
       - name: Set up Python ${{matrix.python-version}}
         uses: actions/setup-python@v2
         with:
           python-version: ${{matrix.python-version}}
- 
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
@@ -56,7 +57,7 @@ jobs:
           virtualenvs-create: true
           installer-parallel: true
           virtualenvs-path: ~/.virtualenvs
- 
+
       - name: Cache paths
         uses: actions/cache@v2
         with:
@@ -68,13 +69,13 @@ jobs:
           key: poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}-${{ matrix.toxenv }}
           restore-keys: |
             poetry-${{ hashFiles('**/poetry.lock', '**/tox.ini', '**/pyproject.toml') }}-${{ matrix.toxenv }}
- 
+
       - name: Install Dependencies
         run: |
           poetry install
-          pip install --user -r .circleci/circle_requirements.txt
- 
+          pip install --user -r .github/requirements.txt
+
       - name: run ${{ matrix.toxenv }} tests
         run: |
           tox -e ${{ matrix.toxenv }}
- 
+
