@@ -55,15 +55,11 @@ jobs:
       - name: deploy artifacts to s3 snapshots
         working-directory: artifacts
         run: |
-          for i in `ls`; do
-            s3cmd put $i/*.zip --acl-public s3://redismodules/rgsync/snapshots/
-          done
+          s3cmd put */*.zip --acl-public s3://redismodules/rgsync/snapshots/
         if: startsWith(github.ref, 'refs/tags/') != true
 
       - name: deploy artifacts to s3 snapshots
         working-directory: artifacts
         run: |
-          for i in `ls`; do
-            s3cmd put $i/*.zip --acl-public s3://redismodules/rgsync/
-          done
+          s3cmd put */*.zip --acl-public s3://redismodules/rgsync/snapshots/
         if: startsWith(github.ref, 'refs/tags/')
