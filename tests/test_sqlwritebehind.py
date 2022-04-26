@@ -94,6 +94,10 @@ CREATE TABLE persons (
         res = result.fetchone()
         assert res == ("1", "foo", "bar", 22)
 
+        result = self.dbconn.execute(text("select * from persons"))
+        res = result.fetchone()
+        assert res == ("1", "foo", "bar", 22)
+
         # delete from database
         self.env.execute_command("hset", "person:1", "#", "~2")
         res = None

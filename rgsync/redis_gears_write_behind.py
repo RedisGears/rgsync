@@ -269,9 +269,7 @@ class RGWriteBase:
             # cases like mongo, that don't implement this, silence the warning
             if "object has no attribute 'PrepereQueries'" in str(e):
                 return
-            WriteBehindLog(
-                f'Skip calling PrepereQueries of connector, err="{str(e)}"'
-            )
+            WriteBehindLog(f'Skip calling PrepereQueries of connector, err="{str(e)}"')
 
 
 def DeleteKeyIfNeeded(r):

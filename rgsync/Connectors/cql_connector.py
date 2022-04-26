@@ -44,9 +44,7 @@ class CqlConnection:
 
         ConnectionStr = self._getConnectionStr()
 
-        WriteBehindLog(
-            f"Connect: connecting db={self.db} keyspace={self.keyspace}"
-        )
+        WriteBehindLog(f"Connect: connecting db={self.db} keyspace={self.keyspace}")
         auth_provider = PlainTextAuthProvider(
             username=self.user, password=self.password
         )

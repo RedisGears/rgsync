@@ -126,6 +126,14 @@ class DB2Connection(BaseSqlConnection):
         return f"db2://{self.user}:{self.passwd}@{self.db}"
 
 
+class DB2Connection(BaseSqlConnection):
+    def __init__(self, user, passwd, db):
+        BaseSqlConnection.__init__(self, user, passwd, db)
+
+    def _getConnectionStr(self):
+        return f"db2://{self.user}:{self.passwd}@{self.db}"
+
+
 class BaseSqlConnector:
     def __init__(self, connection, tableName, pk, exactlyOnceTableName=None):
         self.connection = connection

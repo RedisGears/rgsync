@@ -32,9 +32,7 @@ class TestMongoJSON:
         dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
         db = docker["MONGO_DB"]
 
-        con = (
-            f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
-        )
+        con = f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
 
         script = """
 from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
@@ -228,9 +226,7 @@ class TestMongoConnString(TestMongoJSON):
         dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
         db = docker["MONGO_DB"]
 
-        con = (
-            f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
-        )
+        con = f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
 
         script = f"""
 from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
@@ -279,9 +275,7 @@ class TestMongoJSONDualKeys:
         dbpasswd = docker["MONGO_INITDB_ROOT_PASSWORD"]
         db = docker["MONGO_DB"]
 
-        con = (
-            f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
-        )
+        con = f"mongodb://{dbuser}:{dbpasswd}@172.17.0.1:27017/{db}?authSource=admin"
 
         script = """
 from rgsync import RGJSONWriteBehind, RGJSONWriteThrough
