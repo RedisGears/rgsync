@@ -1,9 +1,9 @@
 name: Reqpack builds
 on: 
   push:
-    # branches:
-    #   - master
-    #   - '[0-9].[0-9]'
+    branches:
+      - master
+      - '[0-9].[0-9]'
 
 jobs:
 
