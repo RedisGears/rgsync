@@ -33,15 +33,17 @@ bandit = "^1.7.0"
 vulture = "^2.3"
 tox = "^3.24.0"
 tox-poetry = "^0.4.0"
+tox-docker = {git = "https://github.com/chayim/tox-docker/", branch="ck-31-privs"}
 pytest = "^6.2.0"
 flake8-docstrings = "^1.6.0"
 mock = "^4.0.3"
 black = "^21.7b0"
-tox-docker = "^3.0.0"
 tox-pyenv = "^1.1.0"
 PyMySQL = "^1.0.2"
 cryptography = "^3.4.7"
 psycopg2-binary = "^2.9.3"
+ibm-db = "^3.1.1"
+ibm-db-sa = "^0.3.7"
 
 [tool.pytest.ini_options]
 markers = [
@@ -49,6 +51,7 @@ markers = [
     "postgres: postgres backend tests",
     "sqlite: sqlite backend tests",
     "mongo: mongo backend tests",
+    "db2: db2 backend tests",
 ]
 
 [build-system]
