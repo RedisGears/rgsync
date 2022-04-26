@@ -21,7 +21,7 @@ class ReqPacksSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.install("git zip unzip")
+        self.install("git zip unzip libxml2")
         self.run("%s/bin/enable-utf8" % READIES)
 
     def debian_compat(self):
