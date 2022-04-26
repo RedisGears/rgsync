@@ -44,6 +44,7 @@ cryptography = "^3.4.7"
 psycopg2-binary = "^2.9.3"
 ibm-db = "^3.1.1"
 ibm-db-sa = "^0.3.7"
+isort = "^5.10.1"
 
 [tool.pytest.ini_options]
 markers = [
