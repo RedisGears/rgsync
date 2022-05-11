@@ -21,7 +21,7 @@ class RGSyncSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.pip_install("-r %s/paella/requirements.txt" % READIES)
+        self.pip_install(f"-r {READIES}/paella/requirements.txt")
         self.install("git zip unzip")
 
     def debian_compat(self):
@@ -30,7 +30,7 @@ class RGSyncSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
-        self.run("%s/bin/enable-utf8" % READIES)
+        self.run(f"{READIES}/bin/enable-utf8")
         self.run("yum reinstall -y glibc-common")
 
     def fedora(self):

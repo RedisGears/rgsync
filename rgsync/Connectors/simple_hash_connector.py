@@ -1,9 +1,10 @@
 from redisgears import executeCommand as execute
 
-SIMPLE_HASH_BACKEND_PK = 'SimpleHashBackendPK'
-SIMPLE_HASH_BACKEND_TABLE = 'SimpleHashBackendTable'
+SIMPLE_HASH_BACKEND_PK = "SimpleHashBackendPK"
+SIMPLE_HASH_BACKEND_TABLE = "SimpleHashBackendTable"
 
-class SimpleHashConnector():
+
+class SimpleHashConnector:
     def __init__(self, newPefix):
         self.newPefix = newPefix
 
@@ -16,9 +17,9 @@ class SimpleHashConnector():
     def WriteData(self, data):
         for e in data:
             pk = e.pop(SIMPLE_HASH_BACKEND_PK)
-            streamId = e.pop('streamId')
-            newKey = '%s:%s' % (self.newPefix, pk)
-            d = [[k, v] for k,v in e.items() if not k.startswith('_')]
-            res = execute('hset', newKey, *sum(d, []))
-            if 'ERR' in str(res):
+            streamId = e.pop("streamId")
+            newKey = f"{self.newPefix}:{pk}"
+            d = [[k, v] for k, v in e.items() if not k.startswith("_")]
+            res = execute("hset", newKey, *sum(d, []))
+            if "ERR" in str(res):
                 raise Exception(res)

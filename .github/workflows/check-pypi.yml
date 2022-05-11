@@ -1,6 +1,9 @@
 name: Check if required secrets are set to publish to Pypi
 
-on: push
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   checksecret:

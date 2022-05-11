@@ -22,15 +22,15 @@ class ReqPacksSetup(paella.Setup):
         self.pip_install("setuptools --upgrade")
 
         self.install("git zip unzip libxml2")
-        self.run("%s/bin/enable-utf8" % READIES)
+        self.run(f"{READIES}/bin/enable-utf8")
 
     def debian_compat(self):
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
         self.install("libsqlite3-dev")
         self.install("unixodbc-dev")
 
     def redhat_compat(self):
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
         self.install("redhat-lsb-core")
         if self.os_version[0] >= 8 and self.dist in ['centos', 'ol']:
             self.install("sqlite-devel")
@@ -39,7 +39,7 @@ class ReqPacksSetup(paella.Setup):
         self.install("unixODBC-devel")
 
     def fedora(self):
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
 
     def macos(self):
         self.install_gnu_utils()

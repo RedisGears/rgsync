@@ -1,18 +1,19 @@
 import os
+
 import toml
+
 
 def find_package():
     """Find the appropriate package for installation."""
 
     # build the path to the built rgsync, as it is in the docker
     ll = toml.load("pyproject.toml")
-    version = ll['tool']['poetry']['version']
-    rgsync_pkg =  "rgsync-{}-py3-none-any.whl".format(version)
+    version = ll["tool"]["poetry"]["version"]
+    rgsync_pkg = f"rgsync-{version}-py3-none-any.whl"
 
     # determine whether or not we're running in a docker
     in_docker = False
-    if os.path.isfile("/.dockerenv") or \
-        os.environ.get("IN_DOCKER", None) is not None:
+    if os.path.isfile("/.dockerenv") or os.environ.get("IN_DOCKER", None) is not None:
         in_docker = True
 
     # install package
@@ -25,6 +26,7 @@ def find_package():
             pkg = "rgsync"
 
     return pkg
+
 
 def to_utf(d):
     # if isinstance(d, str):

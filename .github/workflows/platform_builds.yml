@@ -1,0 +1,65 @@
+name: Reqpack builds
+on: 
+  push:
+    branches:
+      - master
+      - '[0-9].[0-9]'
+
+jobs:
+
+  platform-build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 10
+      matrix:
+        osnick: [bionic, xenial, centos7, rocky8]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: redislabsmodules/readies
+          path: deps/readies
+      - name: dependencies
+        run: |
+          ./deps/readies/bin/getpy2
+          ./sbin/system-setup.py
+      - name: Platform build ${{matrix.osnick}}
+        run: |
+          OSNICK=${{matrix.osnick}} ./build/reqpacks/build
+      - name: persist
+        uses: actions/upload-artifact@v3
+        with:
+          name: rgsync-${{matrix.osnick}}.zip
+          path: |
+            bin/artifacts/*.zip
+
+  deploy-artifacts:
+    needs: ['platform-build']
+    runs-on: ubuntu-latest
+    steps:
+      - name: set up s3cmd
+        uses: s3-actions/s3cmd@v1.2.0
+        with:
+          provider: aws
+          region: us-east-1
+          access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: fetch dependencies
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: display downloaded file structure
+        run: ls -R
+        working-directory: artifacts
+
+      - name: deploy artifacts to s3 snapshots
+        working-directory: artifacts
+        run: |
+          s3cmd put */*.zip --acl-public s3://redismodules/rgsync/snapshots/
+        if: startsWith(github.ref, 'refs/tags/') != true
+
+      - name: deploy artifacts to s3 snapshots
+        working-directory: artifacts
+        run: |
+          s3cmd put */*.zip --acl-public s3://redismodules/rgsync/snapshots/
+        if: startsWith(github.ref, 'refs/tags/')
