@@ -62,7 +62,6 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          poetry install
           pip install --user -r .github/requirements.txt
 
       - name: run ${{ matrix.toxenv }} tests
