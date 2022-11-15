@@ -9,3 +9,4 @@ redis==3.5.3
 redis-py-cluster
 pyodbc
 pymongo
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
